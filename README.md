@@ -96,6 +96,21 @@ Buka `http://localhost:3000` untuk mencoba UI.
 > `dev/mock-portainer.js` **hanya untuk pengujian**. File ini dikecualikan dari
 > image Docker lewat `.dockerignore` dan tidak dipakai di server.
 
+## Cara membuka panel
+
+> **Penting:** jangan membuka `public/index.html` langsung (klik dua kali atau
+> Live Server). Halaman itu butuh backend `/api/*`, jadi harus lewat `npm start`
+> atau container.
+
+| Mode | Perintah | URL yang dibuka |
+|---|---|---|
+| Lokal (dengan mock) | `npm run mock` + `npm start` | `http://localhost:3000` |
+| Lokal (Portainer asli) | isi `.env` lalu `npm start` | `http://localhost:3000` |
+| Server (Docker) | `docker compose up -d --build` | `http://192.168.122.175:4000` |
+
+Buka **alamat root** saja (`/`), bukan `/api/apps`. Endpoint `/api/apps`
+mengembalikan JSON untuk aplikasi, bukan halaman web.
+
 ## Deploy ke server (bootstrap manual)
 
 ```bash
@@ -106,6 +121,17 @@ nano .env                 # isi PORTAINER_API_KEY (dan GITHUB_TOKEN bila perlu)
 chmod 600 .env
 docker compose up -d --build
 ```
+
+Cek panel dari Server 3:
+
+```bash
+curl -s http://127.0.0.1:4000/api/health
+curl -s http://127.0.0.1:4000/api/apps
+```
+
+Keduanya harus mengembalikan **JSON**. Kalau mengembalikan HTML
+`Cannot GET /api/apps`, berarti yang menjawab bukan panel ini (lihat
+Troubleshooting).
 
 Panel: `http://192.168.122.175:4000`
 
@@ -144,6 +170,65 @@ Tambahkan entri ke `catalog.json` — panel otomatis membaca ulang file ini:
 
 Aturan validasi: `id` slug huruf kecil/angka/minus, `repo` wajib GitHub HTTPS,
 `port` unik dan valid. `APP_PORT` dikirim otomatis ke stack lewat field `Env`.
+
+## Troubleshooting
+
+### Muncul `Cannot GET /api/apps` di browser
+
+Halaman itu adalah 404 bawaan Express dari server **lain**, bukan dari panel
+ini (panel selalu membalas JSON). Penyebab umum:
+
+1. **Membuka `public/index.html` langsung / lewat Live Server.**
+   Jalankan `npm start`, lalu buka `http://localhost:3000`.
+2. **Membuka port yang salah.** Panel ada di port **4000** (Docker) atau
+   **3000** (lokal), bukan 5500/8080/port aplikasi lain.
+3. **Port 4000 dipakai aplikasi Express lain.** Cek:
+
+   ```bash
+   ss -ltnp | grep 4000
+   docker ps
+   docker logs --tail 50 deploy-panel
+   ```
+
+   Hentikan aplikasi lain atau ganti port di `compose.yml`.
+4. **Nginx/tunnel meneruskan `/api` ke backend lain.** Pastikan seluruh request
+   (termasuk `/api/*`) diarahkan ke container panel port 4000, bukan hanya file
+   statis.
+
+Cek cepat dari Server 3:
+
+```bash
+curl -i http://127.0.0.1:4000/api/apps
+```
+
+Harus `HTTP/1.1 200` + JSON. Kalau HTML `Cannot GET`, berarti bukan panel.
+
+### Panel terbuka tapi "Portainer terputus"
+
+1. Cek dari Server 3 (bukan dari browser):
+
+   ```bash
+   source /path/ke/deploy-panel/.env   # atau export manual
+   curl -s -H "X-API-Key: $PORTAINER_API_KEY" \
+     "$PORTAINER_URL/api/endpoints"
+   ```
+
+2. Pastikan `PORTAINER_URL` adalah alamat **internal** Portainer
+   (`http://192.168.122.175:9000`), **bukan** domain Cloudflare Access.
+   Panel tidak punya cookie Access, jadi akan ditolak kalau lewat Access.
+3. Kalau panel berjalan di container dan Portainer hanya listen di
+   `127.0.0.1:9000`, gunakan IP host atau tambahkan:
+
+   ```yaml
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   ```
+
+   lalu set `PORTAINER_URL=http://host.docker.internal:9000`.
+4. Cek token: Portainer → **My account → Access tokens**. Token salah → HTTP 401.
+5. Cek `ENDPOINT_ID` lewat `GET /api/endpoints` (biasanya `1`).
+6. Lihat log panel: `docker logs --tail 50 deploy-panel` — pesan `[error]`
+   memuat detail dari Portainer.
 
 ## Catatan
 

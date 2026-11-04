@@ -742,6 +742,31 @@ app.get('/api/apps/:id/logs', async (req, res, next) => {
   }
 });
 
+app.get('/api', async (req, res, next) => {
+  try {
+    const apps = await getCatalog();
+    res.json({
+      panel: 'deploy-panel',
+      ui: '/',
+      catalog: apps.map((app) => app.id),
+      endpoints: [
+        'GET /api/health',
+        'GET /api/apps',
+        'GET /api/apps/:id/repo-check',
+        'POST /api/apps/:id/deploy',
+        'POST /api/apps/:id/update',
+        'POST /api/apps/:id/rebuild',
+        'POST /api/apps/:id/stop',
+        'POST /api/apps/:id/start',
+        'GET /api/apps/:id/logs',
+        'DELETE /api/apps/:id',
+      ],
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan` });
 });

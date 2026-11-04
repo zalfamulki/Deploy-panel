@@ -167,17 +167,37 @@ function formatDate(value) {
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+  } catch {
+    throw new Error(
+      'Tidak bisa menghubungi server panel. Pastikan panel benar-benar berjalan ' +
+        '(npm start atau container deploy-panel), bukan hanya file HTML yang dibuka langsung.'
+    );
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      `Alamat ${window.location.origin} bukan API panel (HTTP ${res.status}). ` +
+        'Jangan membuka /api/apps langsung atau file public/index.html. ' +
+        'Jalankan panel dengan "npm start" (lokal) atau "docker compose up -d" (server), ' +
+        'lalu buka alamat root panel.'
+    );
+  }
 
   const text = await res.text();
   let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = { error: text };
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null;
+    }
   }
 
   if (!res.ok) {
