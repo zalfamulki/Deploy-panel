@@ -1,0 +1,9 @@
+services:
+  panel:
+    build: .
+    container_name: deploy-panel
+    restart: unless-stopped
+    ports:
+      - "192.168.122.175:4000:3000"
+    env_file:
+      - .env

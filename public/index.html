@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deploy Panel — Kelompok 5</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">K5</div>
+      <div>
+        <h1>Deploy Panel</h1>
+        <p>PaaS Single Tenant · Kelompok 5</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="connection" class="connection">Memeriksa Portainer…</span>
+      <button id="refresh" class="btn ghost" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="warning" class="warning hidden" role="alert"></div>
+    <section id="apps" class="grid" aria-live="polite"></section>
+    <p id="empty" class="empty hidden">Katalog belum berisi aplikasi.</p>
+  </main>
+
+  <dialog id="logs-dialog" class="dialog">
+    <div class="dialog-head">
+      <h2 id="logs-title">Logs</h2>
+      <button id="logs-close" class="btn ghost" type="button">Tutup</button>
+    </div>
+    <pre id="logs-body" class="logs">Memuat…</pre>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    Deploy lewat panel · Update manual lewat tombol · Portainer API di belakang layar
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

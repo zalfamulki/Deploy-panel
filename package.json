@@ -1,0 +1,21 @@
+{
+  "name": "deploy-panel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Panel deploy PaaS Kelompok 5 — frontend untuk Portainer API",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "mock": "node dev/mock-portainer.js",
+    "test:local": "node scripts/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}

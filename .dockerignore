@@ -1,0 +1,10 @@
+# Jangan masukkan file development / secret ke image
+node_modules
+.git
+.gitignore
+.env
+.env.*
+*.log
+dev/
+scripts/
+README.md

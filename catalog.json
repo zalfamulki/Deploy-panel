@@ -1,0 +1,11 @@
+[
+  {
+    "id": "portainer-test",
+    "name": "Portainer Test",
+    "description": "Uji deploy HTML statis (repo dummy Fase A)",
+    "repo": "https://github.com/zalfamulki/Pontainer-test",
+    "branch": "main",
+    "compose": "compose.yml",
+    "port": 3002
+  }
+]
