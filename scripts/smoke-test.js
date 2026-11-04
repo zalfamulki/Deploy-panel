@@ -91,6 +91,14 @@ async function main() {
   assert(initialApp?.status === 'not_deployed', 'status awal: not_deployed');
   assert(typeof initialApp?.url === 'string' && initialApp.url.includes(String(initialApp?.port)), 'URL aplikasi memakai port katalog');
 
+  const repoCheck = await req('GET', `/api/apps/${APP_ID}/repo-check`);
+  assert(repoCheck.status === 200, 'GET repo-check → 200');
+  assert(typeof repoCheck.data?.ok === 'boolean', 'repo-check mengembalikan field ok');
+  assert(typeof repoCheck.data?.message === 'string' && repoCheck.data.message.length > 0, 'repo-check mengembalikan pesan');
+  if (repoCheck.data?.ok) {
+    assert(Boolean(repoCheck.data?.details?.commit), 'repo-check mendeteksi commit terakhir');
+  }
+
   const deploy = await req('POST', `/api/apps/${APP_ID}/deploy`);
   assert(deploy.status === 200 && deploy.data?.ok === true, 'POST deploy → 200');
   assert(await waitForStatus(APP_ID, 'running'), 'status setelah deploy: running');

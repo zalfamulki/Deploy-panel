@@ -3,43 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
   <title>Deploy Panel — Kelompok 5</title>
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Ctext x='32' y='42' font-family='system-ui,sans-serif' font-size='24' font-weight='700' fill='white' text-anchor='middle'%3EK5%3C/text%3E%3C/svg%3E"
+  />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">K5</div>
-      <div>
-        <h1>Deploy Panel</h1>
-        <p>PaaS Single Tenant · Kelompok 5</p>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">K5</span>
+        <span class="brand-text">
+          <strong>Deploy Panel</strong>
+          <small>PaaS Single Tenant</small>
+        </span>
       </div>
-    </div>
-    <div class="topbar-actions">
-      <span id="connection" class="connection">Memeriksa Portainer…</span>
-      <button id="refresh" class="btn ghost" type="button">Refresh</button>
+      <div class="header-actions">
+        <span id="connection" class="conn conn--neutral" role="status">
+          <span class="conn-dot"></span>
+          <span id="connection-text">Menghubungkan…</span>
+        </span>
+        <button id="refresh" class="btn btn-ghost" type="button">
+          <span data-icon="refresh"></span>
+          <span class="btn-label">Refresh</span>
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="container">
-    <div id="warning" class="warning hidden" role="alert"></div>
-    <section id="apps" class="grid" aria-live="polite"></section>
-    <p id="empty" class="empty hidden">Katalog belum berisi aplikasi.</p>
+  <main class="page">
+    <section class="page-head">
+      <div class="page-title">
+        <h1>Katalog Aplikasi</h1>
+        <p>Deploy dan kelola aplikasi dari repo GitHub tanpa membuka Portainer.</p>
+      </div>
+      <div class="stats" aria-label="Ringkasan status aplikasi">
+        <div class="stat">
+          <span class="stat-value" id="stat-total">–</span>
+          <span class="stat-label">Aplikasi</span>
+        </div>
+        <div class="stat stat--running">
+          <span class="stat-value" id="stat-running">–</span>
+          <span class="stat-label">Running</span>
+        </div>
+        <div class="stat stat--stopped">
+          <span class="stat-value" id="stat-stopped">–</span>
+          <span class="stat-label">Stopped</span>
+        </div>
+        <div class="stat stat--idle">
+          <span class="stat-value" id="stat-idle">–</span>
+          <span class="stat-label">Belum deploy</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="warning" class="alert hidden" role="alert">
+      <span class="alert-icon" data-icon="alert"></span>
+      <div class="alert-body">
+        <strong>Portainer tidak terhubung</strong>
+        <p id="warning-text"></p>
+      </div>
+      <button id="retry" class="btn btn-ghost btn-sm" type="button">Coba lagi</button>
+    </div>
+
+    <section id="apps" class="grid" aria-live="polite" aria-busy="true"></section>
+
+    <div id="empty" class="empty hidden">
+      <span class="empty-icon" data-icon="inbox"></span>
+      <h2>Belum ada aplikasi</h2>
+      <p>Tambahkan entri ke <code>catalog.json</code> untuk mulai deploy.</p>
+    </div>
   </main>
 
-  <dialog id="logs-dialog" class="dialog">
-    <div class="dialog-head">
-      <h2 id="logs-title">Logs</h2>
-      <button id="logs-close" class="btn ghost" type="button">Tutup</button>
+  <footer class="site-footer">
+    <span>Update manual lewat tombol</span>
+    <span class="dot-sep">·</span>
+    <span>Portainer API di belakang layar</span>
+  </footer>
+
+  <dialog id="confirm-dialog" class="modal">
+    <div class="modal-card modal-card--sm">
+      <div class="modal-icon modal-icon--warn" data-icon="alert"></div>
+      <h2 id="confirm-title">Konfirmasi</h2>
+      <p id="confirm-message" class="modal-text"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="btn btn-ghost" type="button">Batal</button>
+        <button id="confirm-ok" class="btn btn-danger" type="button">Lanjutkan</button>
+      </div>
     </div>
-    <pre id="logs-body" class="logs">Memuat…</pre>
   </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="logs-dialog" class="modal modal--wide">
+    <div class="modal-card modal-card--logs">
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 id="logs-title">Logs</h2>
+          <p id="logs-sub" class="modal-sub">Memuat…</p>
+        </div>
+        <div class="modal-head-actions">
+          <button id="logs-copy" class="btn btn-ghost btn-sm" type="button">Copy</button>
+          <button id="logs-refresh" class="btn btn-ghost btn-sm" type="button">Refresh</button>
+          <button id="logs-close" class="btn btn-ghost btn-sm" type="button">Tutup</button>
+        </div>
+      </div>
+      <pre id="logs-body" class="logs" tabindex="0">Memuat…</pre>
+    </div>
+  </dialog>
 
-  <footer class="footer">
-    Deploy lewat panel · Update manual lewat tombol · Portainer API di belakang layar
-  </footer>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>

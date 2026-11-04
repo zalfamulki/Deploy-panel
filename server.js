@@ -12,26 +12,44 @@ const PORTAINER_API_KEY = process.env.PORTAINER_API_KEY || '';
 const ENDPOINT_ID = String(process.env.ENDPOINT_ID || '1');
 const APP_HOST = process.env.APP_HOST || '192.168.122.175';
 
+const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+
+const CATALOG_FILE = path.join(__dirname, 'catalog.json');
+
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const REPO_RE = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/;
 const BRANCH_RE = /^[A-Za-z0-9._/-]{1,100}$/;
 const COMPOSE_RE = /^[A-Za-z0-9._/-]{1,100}$/;
 
+const PORTAINER_TIMEOUT_MS = 30_000;
 const DEPLOY_TIMEOUT_MS = 300_000;
-const DEFAULT_TIMEOUT_MS = 30_000;
+const GITHUB_TIMEOUT_MS = 15_000;
+const REPO_CHECK_TTL_MS = 5 * 60_000;
 
-class PortainerError extends Error {
-  constructor(message, status = 502, detail = null) {
+class AppError extends Error {
+  constructor(message, status = 500, detail = null) {
     super(message);
-    this.name = 'PortainerError';
+    this.name = 'AppError';
     this.status = status;
     this.detail = detail;
   }
 }
 
+class PortainerError extends AppError {
+  constructor(message, status = 502, detail = null) {
+    super(message, status, detail);
+    this.name = 'PortainerError';
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Katalog
+// Katalog (hot reload: perubahan catalog.json langsung terbaca)
 // ---------------------------------------------------------------------------
+
+let catalog = [];
+let catalogMtimeMs = 0;
+const inFlight = new Set();
 
 function validateCatalogEntry(item, index) {
   const where = `catalog[${index}]`;
@@ -45,7 +63,7 @@ function validateCatalogEntry(item, index) {
   const compose = String(item.compose || 'compose.yml').trim();
   const port = Number(item.port);
 
-  if (!ID_RE.test(id)) throw new Error(`${where}.id tidak valid (pakai huruf kecil/angka/tanda minus)`);
+  if (!ID_RE.test(id)) throw new Error(`${where}.id tidak valid (huruf kecil/angka/minus)`);
   if (!name) throw new Error(`${where}.name wajib diisi`);
   if (!REPO_RE.test(repo)) throw new Error(`${where}.repo harus URL https://github.com/owner/repo`);
   if (!BRANCH_RE.test(branch) || branch.includes('..')) throw new Error(`${where}.branch tidak valid`);
@@ -55,9 +73,8 @@ function validateCatalogEntry(item, index) {
   return { id, name, description, repo, branch, compose, port };
 }
 
-async function loadCatalog() {
-  const file = path.join(__dirname, 'catalog.json');
-  const raw = await fs.readFile(file, 'utf8');
+async function readCatalogFile() {
+  const raw = await fs.readFile(CATALOG_FILE, 'utf8');
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -67,6 +84,7 @@ async function loadCatalog() {
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error('catalog.json harus berisi array dan tidak boleh kosong');
   }
+
   const apps = parsed.map(validateCatalogEntry);
   const ids = new Set();
   const ports = new Set();
@@ -79,11 +97,49 @@ async function loadCatalog() {
   return apps;
 }
 
+async function getCatalog() {
+  const stat = await fs.stat(CATALOG_FILE);
+  if (stat.mtimeMs !== catalogMtimeMs) {
+    catalog = await readCatalogFile();
+    catalogMtimeMs = stat.mtimeMs;
+    console.log(`[catalog] dimuat: ${catalog.map((app) => app.id).join(', ')}`);
+  }
+  return catalog;
+}
+
+async function getCatalogApp(id) {
+  const apps = await getCatalog();
+  const item = apps.find((entry) => entry.id === id);
+  if (!item) throw new AppError(`App "${id}" tidak ada di katalog`, 404);
+  return item;
+}
+
+function appView(item, stack) {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    repo: item.repo,
+    branch: item.branch,
+    port: item.port,
+    url: `http://${APP_HOST}:${item.port}`,
+    status: statusFromStack(stack),
+    stackId: stack?.Id ?? null,
+    deployedAt: toIsoDate(stack?.CreationDate),
+  };
+}
+
+function toIsoDate(value) {
+  if (!value) return null;
+  const date = typeof value === 'number' ? new Date(value * 1000) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 // ---------------------------------------------------------------------------
 // Portainer client
 // ---------------------------------------------------------------------------
 
-async function portainer(method, apiPath, body, { timeout = DEFAULT_TIMEOUT_MS } = {}) {
+async function portainer(method, apiPath, body, { timeout = PORTAINER_TIMEOUT_MS } = {}) {
   if (!PORTAINER_URL) throw new PortainerError('PORTAINER_URL belum diset', 500);
   if (!PORTAINER_API_KEY) throw new PortainerError('PORTAINER_API_KEY belum diset', 500);
 
@@ -117,16 +173,24 @@ async function portainer(method, apiPath, body, { timeout = DEFAULT_TIMEOUT_MS }
         typeof data === 'string'
           ? data
           : data?.message || data?.details || (data ? JSON.stringify(data) : null);
-      throw new PortainerError(`Portainer ${method} ${apiPath} gagal (HTTP ${res.status})`, 502, detail);
+      throw new PortainerError(
+        `Portainer ${method} ${apiPath} gagal (HTTP ${res.status})`,
+        502,
+        detail
+      );
     }
 
     return data;
   } catch (err) {
-    if (err instanceof PortainerError) throw err;
+    if (err instanceof AppError) throw err;
     if (err.name === 'AbortError') {
       throw new PortainerError(`Portainer tidak merespons (timeout ${Math.round(timeout / 1000)}s)`, 504);
     }
-    throw new PortainerError(`Tidak bisa menghubungi Portainer: ${err.message}`, 502);
+    const reason = err.cause?.code || err.message;
+    throw new PortainerError(
+      `Tidak bisa menghubungi Portainer (${reason}). Periksa PORTAINER_URL dan status container Portainer.`,
+      502
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -149,8 +213,18 @@ function statusFromStack(stack) {
   return 'unknown';
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function runLocked(id, fn) {
+  if (inFlight.has(id)) {
+    throw new AppError('Aksi lain untuk aplikasi ini sedang berjalan. Tunggu sebentar.', 409);
+  }
+  inFlight.add(id);
+  try {
+    return await fn();
+  } finally {
+    inFlight.delete(id);
+  }
 }
 
 async function deleteStack(id) {
@@ -183,7 +257,229 @@ async function createStack(app) {
 }
 
 // ---------------------------------------------------------------------------
-// Aplikasi Express
+// GitHub — validasi repo/branch/compose sebelum deploy
+// ---------------------------------------------------------------------------
+
+const repoCheckCache = new Map(); // app.id -> { expiresAt, result }
+
+function parseRepoUrl(repo) {
+  let url;
+  try {
+    url = new URL(repo);
+  } catch {
+    return null;
+  }
+  if (url.hostname !== 'github.com') return null;
+
+  const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  if (parts.length !== 2) return null;
+
+  const [owner, rawName] = parts;
+  const name = rawName.replace(/\.git$/, '');
+  if (!owner || !name) return null;
+  return { owner, name };
+}
+
+async function githubRequest(apiPath) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'deploy-panel-kelompok5',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (GITHUB_TOKEN) headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GITHUB_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${GITHUB_API}${apiPath}`, { headers, signal: controller.signal });
+    const text = await res.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      networkError: err.name === 'AbortError' ? 'timeout' : err.message,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function cacheRepoCheck(appId, result) {
+  repoCheckCache.set(appId, { expiresAt: Date.now() + REPO_CHECK_TTL_MS, result });
+  return result;
+}
+
+function githubUnavailable(res) {
+  return res.status === 0 || res.status >= 500 || res.status === 429;
+}
+
+function isRateLimited(res) {
+  return res.status === 403 && /rate limit/i.test(String(res.data?.message || ''));
+}
+
+async function checkRepo(app) {
+  const cached = repoCheckCache.get(app.id);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+
+  const checkedAt = new Date().toISOString();
+  const parsed = parseRepoUrl(app.repo);
+  if (!parsed) {
+    return cacheRepoCheck(app.id, {
+      ok: false,
+      conclusive: true,
+      message: 'URL repo bukan GitHub yang valid',
+      details: null,
+      checkedAt,
+    });
+  }
+
+  const base = `/repos/${parsed.owner}/${parsed.name}`;
+  const repoRes = await githubRequest(base);
+
+  if (githubUnavailable(repoRes) || isRateLimited(repoRes)) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `GitHub tidak bisa diverifikasi saat ini (${repoRes.networkError || repoRes.status}). Deploy tetap bisa dicoba.`,
+      details: null,
+      checkedAt,
+    };
+  }
+
+  if (repoRes.status === 404) {
+    return cacheRepoCheck(app.id, {
+      ok: false,
+      conclusive: true,
+      message: 'Repo tidak ditemukan atau private. Isi GITHUB_TOKEN bila repo private.',
+      details: null,
+      checkedAt,
+    });
+  }
+
+  if (repoRes.status === 401) {
+    return cacheRepoCheck(app.id, {
+      ok: false,
+      conclusive: true,
+      message: 'GITHUB_TOKEN ditolak oleh GitHub. Periksa token di .env.',
+      details: null,
+      checkedAt,
+    });
+  }
+
+  if (!repoRes.ok) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `GitHub mengembalikan HTTP ${repoRes.status}. Deploy tetap bisa dicoba.`,
+      details: null,
+      checkedAt,
+    };
+  }
+
+  const branchRes = await githubRequest(`${base}/branches/${encodeURIComponent(app.branch)}`);
+  if (githubUnavailable(branchRes) || isRateLimited(branchRes)) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `Branch "${app.branch}" belum bisa diverifikasi (${branchRes.networkError || branchRes.status}).`,
+      details: null,
+      checkedAt,
+    };
+  }
+  if (branchRes.status === 404) {
+    return cacheRepoCheck(app.id, {
+      ok: false,
+      conclusive: true,
+      message: `Branch "${app.branch}" tidak ditemukan di repo.`,
+      details: null,
+      checkedAt,
+    });
+  }
+  if (!branchRes.ok) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `GitHub mengembalikan HTTP ${branchRes.status} saat cek branch.`,
+      details: null,
+      checkedAt,
+    };
+  }
+
+  const composePath = app.compose
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  const composeRes = await githubRequest(
+    `${base}/contents/${composePath}?ref=${encodeURIComponent(app.branch)}`
+  );
+  if (githubUnavailable(composeRes) || isRateLimited(composeRes)) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `File "${app.compose}" belum bisa diverifikasi (${composeRes.networkError || composeRes.status}).`,
+      details: null,
+      checkedAt,
+    };
+  }
+  if (composeRes.status === 404) {
+    return cacheRepoCheck(app.id, {
+      ok: false,
+      conclusive: true,
+      message: `File "${app.compose}" tidak ditemukan di branch "${app.branch}".`,
+      details: null,
+      checkedAt,
+    });
+  }
+  if (!composeRes.ok) {
+    return {
+      ok: false,
+      conclusive: false,
+      message: `GitHub mengembalikan HTTP ${composeRes.status} saat cek ${app.compose}.`,
+      details: null,
+      checkedAt,
+    };
+  }
+
+  return cacheRepoCheck(app.id, {
+    ok: true,
+    conclusive: true,
+    message: `Repo terhubung — branch ${app.branch} dan ${app.compose} tersedia.`,
+    details: {
+      owner: parsed.owner,
+      name: parsed.name,
+      private: Boolean(repoRes.data?.private),
+      defaultBranch: repoRes.data?.default_branch || null,
+      htmlUrl: repoRes.data?.html_url || app.repo,
+      commit: branchRes.data?.commit?.sha ? branchRes.data.commit.sha.slice(0, 7) : null,
+    },
+    checkedAt,
+  });
+}
+
+async function preflightRepo(app) {
+  const result = await checkRepo(app);
+  if (!result.ok && result.conclusive) {
+    throw new AppError(`Repo belum siap di-deploy: ${result.message}`, 400);
+  }
+  if (!result.ok) {
+    console.warn(`[github] preflight ${app.id} tidak konklusif: ${result.message}`);
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Express
 // ---------------------------------------------------------------------------
 
 const app = express();
@@ -197,7 +493,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limit sederhana (in-memory) untuk semua endpoint /api.
+// Rate limit sederhana (in-memory).
 const rateBuckets = new Map();
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 120;
@@ -218,52 +514,33 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-function getCatalogApp(id) {
-  const item = catalog.find((entry) => entry.id === id);
-  if (!item) {
-    const err = new Error(`App "${id}" tidak ada di katalog`);
-    err.status = 404;
-    throw err;
-  }
-  return item;
-}
-
-function appView(item, stack) {
-  return {
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    repo: item.repo,
-    branch: item.branch,
-    port: item.port,
-    url: `http://${APP_HOST}:${item.port}`,
-    status: statusFromStack(stack),
-    stackId: stack?.Id ?? null,
-  };
-}
-
 function cleanLogs(text) {
   if (typeof text !== 'string') return '';
-  // Buang byte header multiplexing Docker dan karakter kontrol.
   return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
 }
 
-let catalog = [];
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    ok: true,
-    panel: 'deploy-panel',
-    portainerUrl: PORTAINER_URL || null,
-    apiKeyConfigured: Boolean(PORTAINER_API_KEY),
-    endpointId: ENDPOINT_ID,
-    apps: catalog.length,
-    uptime: Math.round(process.uptime()),
-  });
+app.get('/api/health', async (req, res, next) => {
+  try {
+    const apps = await getCatalog();
+    res.json({
+      ok: true,
+      panel: 'deploy-panel',
+      portainerUrl: PORTAINER_URL || null,
+      apiKeyConfigured: Boolean(PORTAINER_API_KEY),
+      endpointId: ENDPOINT_ID,
+      appHost: APP_HOST,
+      appCount: apps.length,
+      githubTokenConfigured: Boolean(GITHUB_TOKEN),
+      uptime: Math.round(process.uptime()),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get('/api/apps', async (req, res, next) => {
   try {
+    const apps = await getCatalog();
     let stacks = [];
     let portainerError = null;
     try {
@@ -272,16 +549,26 @@ app.get('/api/apps', async (req, res, next) => {
       portainerError = err.detail ? `${err.message}: ${err.detail}` : err.message;
     }
 
-    const apps = catalog.map((item) => {
+    const views = apps.map((item) => {
       const view = appView(item, stacks.find((stack) => stack?.Name === item.id));
       if (portainerError) {
         view.status = 'unknown';
         view.stackId = null;
+        view.deployedAt = null;
       }
       return view;
     });
 
-    res.json({ apps, portainerError, host: APP_HOST });
+    res.json({ apps: views, portainerError, host: APP_HOST });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/apps/:id/repo-check', async (req, res, next) => {
+  try {
+    const item = await getCatalogApp(req.params.id);
+    res.json(await checkRepo(item));
   } catch (err) {
     next(err);
   }
@@ -289,15 +576,19 @@ app.get('/api/apps', async (req, res, next) => {
 
 app.post('/api/apps/:id/deploy', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    const existing = await findStack(item.id);
-    if (existing) {
-      return res.status(409).json({
-        error: `Stack "${item.id}" sudah ada. Gunakan Update atau Force rebuild.`,
-      });
-    }
-    const stack = await createStack(item);
-    res.json({ ok: true, message: `Stack "${item.id}" berhasil dibuat`, stack });
+    const item = await getCatalogApp(req.params.id);
+    const result = await runLocked(item.id, async () => {
+      const existing = await findStack(item.id);
+      if (existing) {
+        throw new AppError(
+          `Stack "${item.id}" sudah ada. Gunakan Update atau Force rebuild.`,
+          409
+        );
+      }
+      await preflightRepo(item);
+      return createStack(item);
+    });
+    res.json({ ok: true, message: `Stack "${item.id}" berhasil dibuat`, stack: result });
   } catch (err) {
     next(err);
   }
@@ -305,16 +596,18 @@ app.post('/api/apps/:id/deploy', async (req, res, next) => {
 
 app.post('/api/apps/:id/update', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    const stack = await findStack(item.id);
-    if (!stack) return res.status(404).json({ error: 'Stack belum di-deploy.' });
+    const item = await getCatalogApp(req.params.id);
+    const result = await runLocked(item.id, async () => {
+      const stack = await findStack(item.id);
+      if (!stack) throw new AppError('Stack belum di-deploy.', 404);
 
-    const result = await portainer(
-      'PUT',
-      `/stacks/${stack.Id}/git/redeploy?endpointId=${ENDPOINT_ID}`,
-      { RepullImageAndRedeploy: true, Prune: false },
-      { timeout: DEPLOY_TIMEOUT_MS }
-    );
+      return portainer(
+        'PUT',
+        `/stacks/${stack.Id}/git/redeploy?endpointId=${ENDPOINT_ID}`,
+        { RepullImageAndRedeploy: true, Prune: false },
+        { timeout: DEPLOY_TIMEOUT_MS }
+      );
+    });
     res.json({ ok: true, message: `Stack "${item.id}" di-redeploy`, stack: result });
   } catch (err) {
     next(err);
@@ -323,26 +616,29 @@ app.post('/api/apps/:id/update', async (req, res, next) => {
 
 app.post('/api/apps/:id/rebuild', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    await deleteStack(item.id);
-    await sleep(1000);
+    const item = await getCatalogApp(req.params.id);
+    const result = await runLocked(item.id, async () => {
+      // Preflight dulu supaya stack lama tidak dihapus kalau repo bermasalah.
+      await preflightRepo(item);
+      await deleteStack(item.id);
+      await sleep(1000);
 
-    let lastError = null;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const stack = await createStack(item);
-        return res.json({ ok: true, message: `Stack "${item.id}" di-rebuild dari nol`, stack });
-      } catch (err) {
-        lastError = err;
-        await sleep(2000);
+      let lastError = null;
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          return await createStack(item);
+        } catch (err) {
+          lastError = err;
+          await sleep(2000);
+        }
       }
-    }
-
-    throw new PortainerError(
-      `Rebuild "${item.id}" gagal setelah 3 percobaan`,
-      lastError?.status || 502,
-      lastError?.detail || lastError?.message
-    );
+      throw new PortainerError(
+        `Rebuild "${item.id}" gagal setelah 3 percobaan`,
+        lastError?.status || 502,
+        lastError?.detail || lastError?.message
+      );
+    });
+    res.json({ ok: true, message: `Stack "${item.id}" di-rebuild dari nol`, stack: result });
   } catch (err) {
     next(err);
   }
@@ -350,12 +646,13 @@ app.post('/api/apps/:id/rebuild', async (req, res, next) => {
 
 app.post('/api/apps/:id/stop', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    const stack = await findStack(item.id);
-    if (!stack) return res.status(404).json({ error: 'Stack belum di-deploy.' });
-
-    await portainer('POST', `/stacks/${stack.Id}/stop?endpointId=${ENDPOINT_ID}`, undefined, {
-      timeout: DEPLOY_TIMEOUT_MS,
+    const item = await getCatalogApp(req.params.id);
+    await runLocked(item.id, async () => {
+      const stack = await findStack(item.id);
+      if (!stack) throw new AppError('Stack belum di-deploy.', 404);
+      await portainer('POST', `/stacks/${stack.Id}/stop?endpointId=${ENDPOINT_ID}`, undefined, {
+        timeout: DEPLOY_TIMEOUT_MS,
+      });
     });
     res.json({ ok: true, message: `Stack "${item.id}" dihentikan` });
   } catch (err) {
@@ -365,12 +662,13 @@ app.post('/api/apps/:id/stop', async (req, res, next) => {
 
 app.post('/api/apps/:id/start', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    const stack = await findStack(item.id);
-    if (!stack) return res.status(404).json({ error: 'Stack belum di-deploy.' });
-
-    await portainer('POST', `/stacks/${stack.Id}/start?endpointId=${ENDPOINT_ID}`, undefined, {
-      timeout: DEPLOY_TIMEOUT_MS,
+    const item = await getCatalogApp(req.params.id);
+    await runLocked(item.id, async () => {
+      const stack = await findStack(item.id);
+      if (!stack) throw new AppError('Stack belum di-deploy.', 404);
+      await portainer('POST', `/stacks/${stack.Id}/start?endpointId=${ENDPOINT_ID}`, undefined, {
+        timeout: DEPLOY_TIMEOUT_MS,
+      });
     });
     res.json({ ok: true, message: `Stack "${item.id}" dijalankan` });
   } catch (err) {
@@ -380,9 +678,9 @@ app.post('/api/apps/:id/start', async (req, res, next) => {
 
 app.delete('/api/apps/:id', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
-    const removed = await deleteStack(item.id);
-    if (!removed) return res.status(404).json({ error: 'Stack belum di-deploy.' });
+    const item = await getCatalogApp(req.params.id);
+    const removed = await runLocked(item.id, () => deleteStack(item.id));
+    if (!removed) throw new AppError('Stack belum di-deploy.', 404);
     res.json({ ok: true, message: `Stack "${item.id}" dihapus` });
   } catch (err) {
     next(err);
@@ -391,9 +689,9 @@ app.delete('/api/apps/:id', async (req, res, next) => {
 
 app.get('/api/apps/:id/logs', async (req, res, next) => {
   try {
-    const item = getCatalogApp(req.params.id);
+    const item = await getCatalogApp(req.params.id);
     const stack = await findStack(item.id);
-    if (!stack) return res.status(404).json({ error: 'Stack belum di-deploy.' });
+    if (!stack) throw new AppError('Stack belum di-deploy.', 404);
 
     const filters = encodeURIComponent(
       JSON.stringify({ label: [`com.docker.compose.project=${item.id}`] })
@@ -405,12 +703,19 @@ app.get('/api/apps/:id/logs', async (req, res, next) => {
     const list = Array.isArray(containers) ? containers : [];
 
     if (list.length === 0) {
-      return res.json({ ok: true, containers: [], logs: 'Tidak ada container ditemukan untuk stack ini.' });
+      return res.json({
+        ok: true,
+        containers: [],
+        logs: 'Tidak ada container ditemukan untuk stack ini.',
+      });
     }
 
     const sections = [];
     for (const container of list.slice(0, 3)) {
-      const name = String(container.Names?.[0] || container.Id?.slice(0, 12) || 'container').replace(/^\//, '');
+      const name = String(container.Names?.[0] || container.Id?.slice(0, 12) || 'container').replace(
+        /^\//,
+        ''
+      );
       try {
         const raw = await portainer(
           'GET',
@@ -445,7 +750,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
-  const status = err.status && Number.isInteger(err.status) ? err.status : 500;
+  const status = Number.isInteger(err.status) ? err.status : 500;
   console.error(`[error] ${req.method} ${req.originalUrl}:`, err.message, err.detail || '');
   res.status(status).json({ error: err.message, detail: err.detail || undefined });
 });
@@ -455,7 +760,7 @@ app.use((err, req, res, next) => {
 // ---------------------------------------------------------------------------
 
 try {
-  catalog = await loadCatalog();
+  await getCatalog();
 } catch (err) {
   console.error(`[fatal] Gagal memuat katalog: ${err.message}`);
   process.exit(1);
@@ -465,5 +770,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[deploy-panel] listening on http://0.0.0.0:${PORT}`);
   console.log(`[deploy-panel] katalog: ${catalog.map((item) => item.id).join(', ')}`);
   console.log(`[deploy-panel] Portainer: ${PORTAINER_URL || '(belum diset)'} (endpoint ${ENDPOINT_ID})`);
+  console.log(`[deploy-panel] GitHub token: ${GITHUB_TOKEN ? 'diset' : 'tidak diset (repo public tetap bisa)'}`);
   if (!PORTAINER_API_KEY) console.warn('[deploy-panel] PERINGATAN: PORTAINER_API_KEY belum diset');
 });
