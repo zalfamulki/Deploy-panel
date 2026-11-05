@@ -39,7 +39,7 @@
       <span class="project-chevron" aria-hidden="true" data-icon="chevron-down"></span>
     </div>
 
-    <div class="nav-label">Control Center</div>
+    <div class="nav-label">Menu Project</div>
     <nav class="nav-list" aria-label="Halaman panel">
       <button class="nav-item is-active" type="button" data-view="overview">
         <span class="nav-icon" data-icon="grid"></span>
@@ -48,11 +48,11 @@
       </button>
       <button class="nav-item" type="button" data-view="deployments">
         <span class="nav-icon" data-icon="rocket"></span>
-        <span>Deployments &amp; Builds</span>
+        <span>Projects &amp; Deployments</span>
       </button>
       <button class="nav-item" type="button" data-view="domains">
         <span class="nav-icon" data-icon="dns"></span>
-        <span>Domains &amp; DNS</span>
+        <span>Domains &amp; Endpoints</span>
         <span class="nav-badge" id="nav-domain-count">–</span>
       </button>
       <button class="nav-item" type="button" data-view="environment">
@@ -132,8 +132,8 @@
             <div class="card card--pad">
               <div class="card-head">
                 <div>
-                  <h2>Application Fleet</h2>
-                  <p>Semua aplikasi di <code>catalog.json</code> beserta status container-nya.</p>
+                  <h2>Project Fleet</h2>
+                  <p>Semua project di <code>catalog.json</code> beserta status runtime-nya.</p>
                 </div>
                 <span class="chip chip--mono" id="overview-fleet-count">–</span>
               </div>
@@ -181,8 +181,8 @@
             <div class="card card--pad queue-card">
               <div class="card-head">
                 <div>
-                  <h2>Build Queue</h2>
-                  <p>Pilih aplikasi untuk inspeksi dan log.</p>
+                  <h2>Daftar Project</h2>
+                  <p>Pilih project untuk inspeksi, aksi deploy, dan runtime log.</p>
                 </div>
                 <span class="chip chip--mono" id="deploy-queue-count">–</span>
               </div>
@@ -207,11 +207,11 @@
             <div class="lookup">
               <div>
                 <h2>Domain Lookup</h2>
-                <p>Cari host, aplikasi, repo, atau branch yang terhubung ke panel.</p>
+                <p>Cari host, project, repo, atau branch yang terhubung ke panel.</p>
               </div>
               <label class="search-box search-box--wide" for="domain-search">
                 <span data-icon="search"></span>
-                <input id="domain-search" type="search" placeholder="Cari domain atau aplikasi…" autocomplete="off" />
+                <input id="domain-search" type="search" placeholder="Cari domain atau project…" autocomplete="off" />
               </label>
             </div>
             <div class="callout">
@@ -222,7 +222,7 @@
 
           <div class="section-head">
             <div>
-              <h2>Assigned Domains</h2>
+              <h2>Assigned Endpoints</h2>
               <p>Endpoint internal yang bisa dibuka dari jaringan panel.</p>
             </div>
             <span class="chip chip--mono" id="domains-count">–</span>

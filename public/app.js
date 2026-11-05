@@ -54,6 +54,7 @@ const ICONS = {
   cloud: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a5 5 0 0 1 1 9.9"/>',
   zap: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/>',
+  'git-commit': '<circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/>',
 };
 
 const STATUS_META = {
@@ -64,13 +65,13 @@ const STATUS_META = {
 };
 
 const ACTIONS = {
-  deploy: { label: 'Deploy', icon: 'play', cls: 'btn-primary' },
-  update: { label: 'Update', icon: 'rotate', cls: 'btn-secondary' },
-  start: { label: 'Start', icon: 'play', cls: 'btn-primary' },
-  stop: { label: 'Stop', icon: 'stop', cls: 'btn-secondary' },
-  rebuild: { label: 'Force rebuild', icon: 'refresh', cls: 'btn-warn' },
-  logs: { label: 'Logs', icon: 'terminal', cls: 'btn-ghost' },
-  delete: { label: 'Hapus', icon: 'trash', cls: 'btn-danger' },
+  deploy: { label: 'Deploy Project', icon: 'play', cls: 'btn-primary' },
+  update: { label: 'Update Repo', icon: 'rotate', cls: 'btn-secondary' },
+  start: { label: 'Start Container', icon: 'play', cls: 'btn-primary' },
+  stop: { label: 'Stop Container', icon: 'stop', cls: 'btn-secondary' },
+  rebuild: { label: 'Force Rebuild', icon: 'refresh', cls: 'btn-warn' },
+  logs: { label: 'Runtime Logs', icon: 'terminal', cls: 'btn-ghost' },
+  delete: { label: 'Hapus Stack', icon: 'trash', cls: 'btn-danger' },
 };
 
 const ACTIONS_BY_STATUS = {
@@ -82,25 +83,27 @@ const ACTIONS_BY_STATUS = {
 
 const CONFIRM_SPECS = {
   rebuild: {
-    title: 'Force rebuild aplikasi?',
-    confirmLabel: 'Rebuild sekarang',
+    title: 'Force Rebuild Project?',
+    confirmLabel: 'Rebuild Sekarang',
     build: (app) =>
-      `Stack "${app.name}" akan dihapus lalu dibuat ulang dari repo ${app.repo}. ` +
-      'Container akan mati sementara sampai build selesai.',
+      `Project "${app.name}" (${app.id}) akan dihapus dari Portainer dan di-build ulang dari nol dari repo ${app.repo} (${app.branch}). ` +
+      'Gunakan aksi ini jika Update tidak memicu perubahan atau ada perubahan pada Dockerfile/compose. ' +
+      'Container akan mati sementara hingga proses build selesai.',
   },
   delete: {
-    title: 'Hapus aplikasi?',
-    confirmLabel: 'Hapus permanen',
+    title: 'Hapus Stack Project?',
+    confirmLabel: 'Hapus Permanen',
     build: (app) =>
-      `Stack "${app.name}" beserta container-nya akan dihapus dari Portainer. ` +
-      'Tindakan ini tidak bisa dibatalkan.',
+      `Stack "${app.name}" beserta seluruh container-nya akan dihentikan dan dihapus dari Portainer. ` +
+      'Kode di repo GitHub tidak akan terhapus, tetapi aplikasi akan berhenti berjalan. ' +
+      'Tindakan ini tidak dapat dibatalkan.',
   },
 };
 
 const VIEW_TITLES = {
   overview: 'Overview',
-  deployments: 'Deployments & Builds',
-  domains: 'Domains & DNS',
+  deployments: 'Projects & Deployments',
+  domains: 'Domains & Endpoints',
   environment: 'Environment',
 };
 
@@ -583,10 +586,10 @@ function renderOverview() {
               ${heroStatusText}
             </span>
             <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
-            <span class="muted mono">${c.total} aplikasi</span>
+            <span class="muted mono">${c.total} project</span>
           </div>
-          <h1>Katalog Aplikasi</h1>
-          <p>Deploy dan kelola aplikasi dari repo GitHub tanpa membuka Portainer. Semua aksi tetap melalui API panel yang aman.</p>
+          <h1>Project Fleet — Vercel Lite</h1>
+          <p>Deploy dan kelola berbagai website dari repo GitHub tanpa membuka Portainer. Panel mengotomatiskan pembuatan stack di Portainer.</p>
           <div class="hero__meta">
             <span class="meta-pill">${icon('activity')} ${c.running} running</span>
             <span class="meta-pill">${icon('clock')} ${health?.uptime ? formatUptime(health.uptime) : 'Panel siap'}</span>
@@ -603,7 +606,7 @@ function renderOverview() {
 
   els.overviewMetrics.innerHTML = [
     {
-      label: 'Total Aplikasi',
+      label: 'Total Project',
       value: c.total,
       hint: 'di katalog',
       icon: 'layers',
@@ -860,19 +863,19 @@ function renderDeployments() {
       <div class="hero__body">
         <div class="hero__copy">
           <div class="hero__eyebrow">
-            <span class="status-pill status-pill--neutral">${icon('rocket')} Control Center</span>
+            <span class="status-pill status-pill--neutral">${icon('rocket')} Projects</span>
             <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
           </div>
-          <h1>Deployments &amp; Build Logs</h1>
-          <p>Pantau status pipeline, jalankan aksi Portainer, dan baca log container tanpa berpindah aplikasi.</p>
+          <h1>Projects &amp; Deployments</h1>
+          <p>Deploy project dari repo GitHub, pantau runtime log container, dan kelola stack Portainer dalam satu tempat.</p>
           <div class="hero__meta">
-            <span class="meta-pill">${icon('layers')} ${c.total} aplikasi</span>
+            <span class="meta-pill">${icon('layers')} ${c.total} project</span>
             <span class="meta-pill">${icon('activity')} ${c.running} running</span>
             <span class="meta-pill">${icon('alert')} ${c.unknown} tidak diketahui</span>
           </div>
         </div>
         <div class="hero-stats">
-          <div class="hero-stat"><span>Total</span><strong>${c.total}</strong><small>katalog</small></div>
+          <div class="hero-stat"><span>Total</span><strong>${c.total}</strong><small>project</small></div>
           <div class="hero-stat"><span>Running</span><strong>${c.running}</strong><small>aktif</small></div>
           <div class="hero-stat"><span>Stopped</span><strong>${c.stopped}</strong><small>berhenti</small></div>
         </div>
@@ -951,6 +954,7 @@ function detailHtml(app) {
   const meta = statusMeta(app.status);
   const busyLabel = state.busy.get(app.id);
   const check = state.repos.get(app.id);
+  const commitSha = check?.details?.commit || app.commit || null;
 
   return `
     <div class="card detail-card">
@@ -968,12 +972,12 @@ function detailHtml(app) {
         <div class="detail-quick-actions">
           ${
             app.status === 'running'
-              ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Open</span></a>`
+              ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Buka Aplikasi</span></a>`
               : ''
           }
           ${
             app.status !== 'not_deployed'
-              ? `<button class="btn btn-secondary btn-sm" type="button" data-action="logs" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Logs</span></button>`
+              ? `<button class="btn btn-secondary btn-sm" type="button" data-action="logs" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Runtime Logs</span></button>`
               : ''
           }
         </div>
@@ -981,13 +985,21 @@ function detailHtml(app) {
 
       <div class="meta-grid">
         <div class="meta-tile"><span>Branch</span><strong class="mono">${icon('branch')}${escapeHtml(app.branch)}</strong></div>
-        <div class="meta-tile"><span>Port</span><strong class="mono">${icon('server')}${escapeHtml(app.port)}</strong></div>
-        <div class="meta-tile"><span>Deploy terakhir</span><strong>${escapeHtml(relativeTime(app.deployedAt))}</strong></div>
+        <div class="meta-tile"><span>Commit</span><strong class="mono">${icon('git-commit')}${escapeHtml(commitSha || '—')}</strong></div>
+        <div class="meta-tile"><span>Compose File</span><strong class="mono">${icon('code')}${escapeHtml(app.compose || 'compose.yml')}</strong></div>
+        <div class="meta-tile"><span>Port Internal</span><strong class="mono">${icon('server')}${escapeHtml(app.port)}</strong></div>
+        <div class="meta-tile"><span>Deploy Terakhir</span><strong>${escapeHtml(relativeTime(app.deployedAt))}</strong></div>
         <div class="meta-tile"><span>Stack ID</span><strong class="mono">${app.stackId != null ? escapeHtml(app.stackId) : '—'}</strong></div>
       </div>
 
-      <div class="action-bar">
-        ${busyLabel ? `<span class="working">${icon('loader', 'icon spin')}<span>${escapeHtml(busyLabel)}…</span></span>` : actionButtons(app)}
+      <div class="action-bar-wrap">
+        <div class="action-bar">
+          ${busyLabel ? `<span class="working">${icon('loader', 'icon spin')}<span>${escapeHtml(busyLabel)}…</span></span>` : actionButtons(app)}
+        </div>
+        <div class="callout callout--flush">
+          ${icon('info')}
+          <span><strong>Panduan Aksi:</strong> Tombol <code>Update Repo</code> menarik commit terbaru dari GitHub tanpa menghapus stack. Tombol <code>Force Rebuild</code> menghapus stack &amp; membangun ulang image dari <code>${escapeHtml(app.compose || 'compose.yml')}</code> jika perubahan tidak muncul.</span>
+        </div>
       </div>
 
       ${repoCheckHtml(check)}
@@ -997,16 +1009,52 @@ function detailHtml(app) {
 
 function actionButtons(app) {
   const parts = [];
-  for (const action of ACTIONS_BY_STATUS[app.status] || []) {
-    const meta = ACTIONS[action];
-    if (!meta) continue;
+  if (app.status === 'running') {
     parts.push(
-      `<button class="btn ${meta.cls} btn-sm" type="button" data-action="${action}" data-id="${escapeHtml(app.id)}">${icon(meta.icon)}<span>${meta.label}</span></button>`
+      `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Buka Aplikasi</span></a>`
+    );
+    parts.push(
+      `<button class="btn btn-secondary btn-sm" type="button" data-action="update" data-id="${escapeHtml(app.id)}" title="Tarik commit terbaru dari GitHub">${icon('rotate')}<span>Update Repo</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-secondary btn-sm" type="button" data-action="stop" data-id="${escapeHtml(app.id)}">${icon('stop')}<span>Stop</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-warn btn-sm" type="button" data-action="rebuild" data-id="${escapeHtml(app.id)}" title="Hapus stack & build ulang image dari Dockerfile/compose">${icon('refresh')}<span>Force Rebuild</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Runtime Logs</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="check" data-id="${escapeHtml(app.id)}">${icon('github')}<span>Cek Repo</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(app.id)}">${icon('trash')}<span>Hapus</span></button>`
+    );
+  } else if (app.status === 'stopped') {
+    parts.push(
+      `<button class="btn btn-primary btn-sm" type="button" data-action="start" data-id="${escapeHtml(app.id)}">${icon('play')}<span>Start Container</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-warn btn-sm" type="button" data-action="rebuild" data-id="${escapeHtml(app.id)}" title="Hapus stack & build ulang image dari Dockerfile/compose">${icon('refresh')}<span>Force Rebuild</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Runtime Logs</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="check" data-id="${escapeHtml(app.id)}">${icon('github')}<span>Cek Repo</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(app.id)}">${icon('trash')}<span>Hapus</span></button>`
+    );
+  } else if (app.status === 'not_deployed') {
+    parts.push(
+      `<button class="btn btn-primary btn-sm" type="button" data-action="deploy" data-id="${escapeHtml(app.id)}">${icon('play')}<span>Deploy Project</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-secondary btn-sm" type="button" data-action="check" data-id="${escapeHtml(app.id)}">${icon('github')}<span>Cek Repo Preflight</span></button>`
     );
   }
-  parts.push(
-    `<button class="btn btn-ghost btn-sm" type="button" data-action="check" data-id="${escapeHtml(app.id)}">${icon('github')}<span>Cek repo</span></button>`
-  );
   return parts.join('');
 }
 
@@ -1017,18 +1065,18 @@ function consoleHtml(app) {
 
   let body = '';
   if (app.status === 'not_deployed') {
-    body = `<div class="console-empty">${icon('inbox')}<p>Stack belum di-deploy. Log akan tersedia setelah aplikasi berjalan.</p></div>`;
+    body = `<div class="console-empty">${icon('inbox')}<p>Project belum di-deploy. Klik tombol "Deploy Project" di atas untuk menjalankan container.</p></div>`;
   } else if (!entry) {
-    body = `<div class="console-empty">${icon('terminal')}<p>Log belum dimuat.</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Muat log</span></button></div>`;
+    body = `<div class="console-empty">${icon('terminal')}<p>Runtime log belum dimuat.</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Muat runtime log</span></button></div>`;
   } else if (entry.phase === 'loading') {
-    body = `<div class="console-empty">${icon('loader', 'icon spin')}<p>Mengambil log container dari Portainer…</p></div>`;
+    body = `<div class="console-empty">${icon('loader', 'icon spin')}<p>Mengambil runtime log container dari Docker Engine via Portainer…</p></div>`;
   } else if (entry.phase === 'error') {
-    body = `<div class="console-empty console-empty--error">${icon('alert')}<p>${escapeHtml(entry.message || 'Gagal mengambil log.')}</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Coba lagi</span></button></div>`;
+    body = `<div class="console-empty console-empty--error">${icon('alert')}<p>${escapeHtml(entry.message || 'Gagal mengambil runtime log.')}</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Coba lagi</span></button></div>`;
   } else {
     body = `<pre class="console-pre" id="console-pre">${escapeHtml(entry.text || '(log kosong)')}</pre>`;
   }
 
-  const fetchedLabel = entry?.fetchedAt ? `Diambil ${relativeTime(entry.fetchedAt)}` : 'Belum dimuat';
+  const fetchedLabel = entry?.fetchedAt ? `Diperbarui ${relativeTime(entry.fetchedAt)}` : 'Belum dimuat';
   const stateLabel =
     app.status === 'running' ? 'Container aktif' : app.status === 'stopped' ? 'Container berhenti' : 'Menunggu deploy';
 
@@ -1037,7 +1085,7 @@ function consoleHtml(app) {
       <div class="console-head">
         <div class="console-tabs">
           <span class="console-dot"></span>
-          <span>Log Container</span>
+          <span>Runtime Logs (Container)</span>
           <span class="chip chip--mono" title="${escapeHtml(containerLabel)}">${escapeHtml(containerLabel)}</span>
         </div>
         <div class="console-controls">
@@ -1051,7 +1099,7 @@ function consoleHtml(app) {
       </div>
       <div class="console-term">
         <div class="console-meta">
-          <span>${icon('terminal')} Portainer API · tail 200</span>
+          <span>${icon('terminal')} Docker Container Runtime Logs (tail 200)</span>
           <span>${escapeHtml(fetchedLabel)}</span>
         </div>
         ${body}
@@ -1407,6 +1455,16 @@ async function load({ silent = false } = {}) {
     state.apps = Array.isArray(data?.apps) ? data.apps : [];
     state.portainerError = data?.portainerError || null;
     state.host = data?.host || state.host;
+
+    for (const app of state.apps) {
+      if (app.commit && !state.repos.has(app.id)) {
+        state.repos.set(app.id, {
+          phase: 'ok',
+          message: `Repo terhubung — commit ${app.commit}`,
+          details: { commit: app.commit },
+        });
+      }
+    }
   } else {
     state.portainerError = appsResult.reason?.message || 'Gagal memuat data panel.';
   }
@@ -1473,6 +1531,12 @@ function maybeAutoLoadLogs(app) {
   loadLogs(app.id);
 }
 
+function maybeAutoCheckRepo(app) {
+  if (!app) return;
+  if (state.repos.has(app.id)) return;
+  checkRepo(app.id, { silent: true });
+}
+
 function selectApp(id, { loadLogs: shouldLoadLogs = true } = {}) {
   const app = state.apps.find((entry) => entry.id === id);
   if (!app) return;
@@ -1488,6 +1552,7 @@ function selectApp(id, { loadLogs: shouldLoadLogs = true } = {}) {
   render();
 
   if (shouldLoadLogs) maybeAutoLoadLogs(app);
+  maybeAutoCheckRepo(app);
 }
 
 async function runAction(id, action) {
@@ -1564,11 +1629,11 @@ async function runAction(id, action) {
   }
 }
 
-async function checkRepo(id) {
+async function checkRepo(id, { silent = false } = {}) {
   const current = state.repos.get(id);
   if (current?.phase === 'loading') return;
 
-  state.repos.set(id, { phase: 'loading', message: 'Menghubungi GitHub…' });
+  state.repos.set(id, { phase: 'loading', message: 'Menghubungi GitHub…', details: current?.details || null });
   render();
 
   try {
@@ -1576,19 +1641,24 @@ async function checkRepo(id) {
     state.repos.set(id, {
       phase: result?.ok ? 'ok' : 'error',
       message: result?.message || (result?.ok ? 'Repo terhubung.' : 'Repo bermasalah.'),
+      details: result?.details || null,
     });
 
-    if (result?.ok) {
-      const commit = result.details?.commit ? ` (commit ${result.details.commit})` : '';
-      toast('success', 'Repo terhubung', `${result.message}${commit}`);
-    } else if (result?.conclusive === false) {
-      toast('info', 'Belum bisa dipastikan', result.message);
-    } else {
-      toast('error', 'Repo bermasalah', result.message);
+    if (!silent) {
+      if (result?.ok) {
+        const commit = result.details?.commit ? ` (commit ${result.details.commit})` : '';
+        toast('success', 'Repo terhubung', `${result.message}${commit}`);
+      } else if (result?.conclusive === false) {
+        toast('info', 'Belum bisa dipastikan', result.message);
+      } else {
+        toast('error', 'Repo bermasalah', result.message);
+      }
     }
   } catch (err) {
-    state.repos.set(id, { phase: 'error', message: err.message });
-    toast('error', 'Gagal cek repo', err.message);
+    state.repos.set(id, { phase: 'error', message: err.message, details: null });
+    if (!silent) {
+      toast('error', 'Gagal cek repo', err.message);
+    }
   } finally {
     render();
   }

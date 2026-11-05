@@ -47,6 +47,8 @@ class PortainerError extends AppError {
 // Katalog (hot reload: perubahan catalog.json langsung terbaca)
 // ---------------------------------------------------------------------------
 
+const repoCheckCache = new Map(); // app.id -> { expiresAt, result }
+
 let catalog = [];
 let catalogMtimeMs = 0;
 const inFlight = new Set();
@@ -115,17 +117,21 @@ async function getCatalogApp(id) {
 }
 
 function appView(item, stack) {
+  const cachedCheck = repoCheckCache.get(item.id)?.result;
   return {
     id: item.id,
     name: item.name,
     description: item.description,
     repo: item.repo,
     branch: item.branch,
+    compose: item.compose,
     port: item.port,
     url: `http://${APP_HOST}:${item.port}`,
     status: statusFromStack(stack),
     stackId: stack?.Id ?? null,
     deployedAt: toIsoDate(stack?.CreationDate),
+    updatedAt: toIsoDate(stack?.UpdateDate || stack?.UpdatedAt),
+    commit: cachedCheck?.details?.commit || null,
   };
 }
 
@@ -259,8 +265,6 @@ async function createStack(app) {
 // ---------------------------------------------------------------------------
 // GitHub — validasi repo/branch/compose sebelum deploy
 // ---------------------------------------------------------------------------
-
-const repoCheckCache = new Map(); // app.id -> { expiresAt, result }
 
 function parseRepoUrl(repo) {
   let url;
@@ -585,10 +589,16 @@ app.post('/api/apps/:id/deploy', async (req, res, next) => {
           409
         );
       }
-      await preflightRepo(item);
-      return createStack(item);
+      const preflight = await preflightRepo(item);
+      const stack = await createStack(item);
+      return { stack, preflight };
     });
-    res.json({ ok: true, message: `Stack "${item.id}" berhasil dibuat`, stack: result });
+    res.json({
+      ok: true,
+      message: `Stack "${item.id}" berhasil dibuat`,
+      stack: result.stack,
+      commit: result.preflight?.details?.commit || null,
+    });
   } catch (err) {
     next(err);
   }
@@ -619,14 +629,15 @@ app.post('/api/apps/:id/rebuild', async (req, res, next) => {
     const item = await getCatalogApp(req.params.id);
     const result = await runLocked(item.id, async () => {
       // Preflight dulu supaya stack lama tidak dihapus kalau repo bermasalah.
-      await preflightRepo(item);
+      const preflight = await preflightRepo(item);
       await deleteStack(item.id);
       await sleep(1000);
 
       let lastError = null;
       for (let attempt = 1; attempt <= 3; attempt += 1) {
         try {
-          return await createStack(item);
+          const stack = await createStack(item);
+          return { stack, preflight };
         } catch (err) {
           lastError = err;
           await sleep(2000);
@@ -638,7 +649,12 @@ app.post('/api/apps/:id/rebuild', async (req, res, next) => {
         lastError?.detail || lastError?.message
       );
     });
-    res.json({ ok: true, message: `Stack "${item.id}" di-rebuild dari nol`, stack: result });
+    res.json({
+      ok: true,
+      message: `Stack "${item.id}" di-rebuild dari nol`,
+      stack: result.stack,
+      commit: result.preflight?.details?.commit || null,
+    });
   } catch (err) {
     next(err);
   }
@@ -705,8 +721,9 @@ app.get('/api/apps/:id/logs', async (req, res, next) => {
     if (list.length === 0) {
       return res.json({
         ok: true,
+        type: 'runtime',
         containers: [],
-        logs: 'Tidak ada container ditemukan untuk stack ini.',
+        logs: 'Tidak ada container ditemukan untuk stack ini. Pastikan container telah berjalan di Portainer.',
       });
     }
 
@@ -721,14 +738,15 @@ app.get('/api/apps/:id/logs', async (req, res, next) => {
           'GET',
           `/endpoints/${ENDPOINT_ID}/docker/containers/${container.Id}/logs?stdout=1&stderr=1&tail=200`
         );
-        sections.push(`===== ${name} =====\n${cleanLogs(raw) || '(log kosong)'}`);
+        sections.push(`===== [Runtime Log: ${name}] =====\n${cleanLogs(raw) || '(log kosong)'}`);
       } catch (err) {
-        sections.push(`===== ${name} =====\n(gagal mengambil log: ${err.message})`);
+        sections.push(`===== [Runtime Log: ${name}] =====\n(gagal mengambil log: ${err.message})`);
       }
     }
 
     res.json({
       ok: true,
+      type: 'runtime',
       containers: list.map((container) => ({
         id: container.Id,
         name: String(container.Names?.[0] || '').replace(/^\//, ''),
