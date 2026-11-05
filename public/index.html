@@ -4,112 +4,322 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
+  <meta name="description" content="Panel deploy PaaS Kelompok 5 — kelola aplikasi dari repo GitHub lewat Portainer." />
   <title>Deploy Panel — Kelompok 5</title>
   <link
     rel="icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Ctext x='32' y='42' font-family='system-ui,sans-serif' font-size='24' font-weight='700' fill='white' text-anchor='middle'%3EK5%3C/text%3E%3C/svg%3E"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235046e5'/%3E%3Cpath d='M20 38h24a7 7 0 0 0 1-14 11 11 0 0 0-21-2 8 8 0 0 0-4 16z' fill='white'/%3E%3C/svg%3E"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
   />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">K5</span>
-        <span class="brand-text">
-          <strong>Deploy Panel</strong>
-          <small>PaaS Single Tenant</small>
+  <div class="sidebar-scrim" id="sidebar-scrim" hidden></div>
+
+  <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true" data-icon="cloud"></span>
+      <span class="brand-text">
+        <strong>Deploy Panel</strong>
+        <small>Kelompok 5 · PaaS</small>
+      </span>
+    </div>
+
+    <div class="project-switch" title="Workspace aktif">
+      <span class="project-dot" aria-hidden="true"></span>
+      <span class="project-copy">
+        <strong id="project-host">Menghubungkan…</strong>
+        <small id="project-sub">Membaca katalog</small>
+      </span>
+      <span class="project-chevron" aria-hidden="true" data-icon="chevron-down"></span>
+    </div>
+
+    <div class="nav-label">Control Center</div>
+    <nav class="nav-list" aria-label="Halaman panel">
+      <button class="nav-item is-active" type="button" data-view="overview">
+        <span class="nav-icon" data-icon="grid"></span>
+        <span>Overview</span>
+        <span class="nav-badge" id="nav-app-count">–</span>
+      </button>
+      <button class="nav-item" type="button" data-view="deployments">
+        <span class="nav-icon" data-icon="rocket"></span>
+        <span>Deployments &amp; Builds</span>
+      </button>
+      <button class="nav-item" type="button" data-view="domains">
+        <span class="nav-icon" data-icon="dns"></span>
+        <span>Domains &amp; DNS</span>
+        <span class="nav-badge" id="nav-domain-count">–</span>
+      </button>
+      <button class="nav-item" type="button" data-view="environment">
+        <span class="nav-icon" data-icon="key"></span>
+        <span>Environment</span>
+        <span class="nav-badge" id="nav-env-count">–</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="side-status">
+        <span class="conn-dot" id="side-connection-dot"></span>
+        <span class="side-status-copy">
+          <strong id="side-connection-text">Menghubungkan…</strong>
+          <small>Portainer API</small>
         </span>
       </div>
-      <div class="header-actions">
-        <span id="connection" class="conn conn--neutral" role="status">
+      <div class="operator">
+        <span class="operator-avatar">K5</span>
+        <span class="operator-copy">
+          <strong>Kelompok 5</strong>
+          <small>Panel Operator</small>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn menu-toggle" id="menu-toggle" type="button" aria-label="Buka menu" aria-expanded="false">
+          <span data-icon="menu"></span>
+        </button>
+        <div class="crumbs">
+          <span>Workspace</span>
+          <span class="crumb-sep" data-icon="chevron-right"></span>
+          <strong id="page-title">Overview</strong>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <label class="search-box search-box--top" for="global-search">
+          <span data-icon="search"></span>
+          <input id="global-search" type="search" placeholder="Cari aplikasi, repo, branch…" autocomplete="off" />
+          <kbd>⌘K</kbd>
+        </label>
+        <span class="conn conn--neutral" id="connection" role="status" aria-live="polite">
           <span class="conn-dot"></span>
           <span id="connection-text">Menghubungkan…</span>
         </span>
-        <button id="refresh" class="btn btn-ghost" type="button">
+        <button class="btn btn-secondary btn-sm" id="refresh" type="button">
           <span data-icon="refresh"></span>
           <span class="btn-label">Refresh</span>
         </button>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="page">
-    <section class="page-head">
-      <div class="page-title">
-        <h1>Katalog Aplikasi</h1>
-        <p>Deploy dan kelola aplikasi dari repo GitHub tanpa membuka Portainer.</p>
+    <main class="content">
+      <div id="warning" class="alert hidden" role="alert">
+        <span class="alert-icon" data-icon="alert"></span>
+        <div class="alert-body">
+          <strong>Portainer tidak terhubung</strong>
+          <p id="warning-text"></p>
+        </div>
+        <button id="retry" class="btn btn-ghost btn-sm" type="button">Coba lagi</button>
       </div>
-      <div class="stats" aria-label="Ringkasan status aplikasi">
-        <div class="stat">
-          <span class="stat-value" id="stat-total">–</span>
-          <span class="stat-label">Aplikasi</span>
+
+      <!-- ============================== OVERVIEW ============================== -->
+      <section id="view-overview" class="view is-active" data-view-panel="overview">
+        <div class="view-inner">
+          <div id="overview-hero"></div>
+          <div class="metrics-grid" id="overview-metrics" aria-live="polite"></div>
+
+          <div class="layout-7-5">
+            <div class="card card--pad">
+              <div class="card-head">
+                <div>
+                  <h2>Application Fleet</h2>
+                  <p>Semua aplikasi di <code>catalog.json</code> beserta status container-nya.</p>
+                </div>
+                <span class="chip chip--mono" id="overview-fleet-count">–</span>
+              </div>
+              <div id="overview-fleet" class="stack stack--tight" aria-live="polite"></div>
+            </div>
+
+            <div class="card card--pad">
+              <div class="card-head">
+                <div>
+                  <h2>Recent Deployments</h2>
+                  <p>Riwayat deploy terakhir dari katalog.</p>
+                </div>
+                <button class="icon-btn" type="button" data-view="deployments" title="Buka deployments">
+                  <span data-icon="arrow"></span>
+                </button>
+              </div>
+              <div id="overview-recent" class="stack stack--tight" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="card card--pad" id="overview-domains"></div>
+            <div class="card card--pad" id="overview-env"></div>
+            <div class="card card--pad" id="overview-platform"></div>
+          </div>
         </div>
-        <div class="stat stat--running">
-          <span class="stat-value" id="stat-running">–</span>
-          <span class="stat-label">Running</span>
+      </section>
+
+      <!-- ============================ DEPLOYMENTS ============================ -->
+      <section id="view-deployments" class="view" data-view-panel="deployments">
+        <div class="view-inner">
+          <div id="deploy-hero"></div>
+
+          <div class="card toolbar">
+            <div class="segmented" id="deploy-status-filter" role="group" aria-label="Filter status deployment">
+              <button class="is-active" type="button" data-filter-status="all">Semua <span class="seg-count" id="deploy-count-all">–</span></button>
+              <button type="button" data-filter-status="running">Running <span class="seg-count" id="deploy-count-running">–</span></button>
+              <button type="button" data-filter-status="stopped">Stopped <span class="seg-count" id="deploy-count-stopped">–</span></button>
+              <button type="button" data-filter-status="not_deployed">Belum deploy <span class="seg-count" id="deploy-count-idle">–</span></button>
+            </div>
+            <span class="toolbar-note" id="deploy-filter-note">Memuat data…</span>
+          </div>
+
+          <div class="workbench">
+            <div class="card card--pad queue-card">
+              <div class="card-head">
+                <div>
+                  <h2>Build Queue</h2>
+                  <p>Pilih aplikasi untuk inspeksi dan log.</p>
+                </div>
+                <span class="chip chip--mono" id="deploy-queue-count">–</span>
+              </div>
+              <div class="queue-list" id="deploy-list" aria-live="polite"></div>
+            </div>
+
+            <div class="detail-column">
+              <div id="deployment-detail" aria-live="polite"></div>
+              <div id="deploy-console"></div>
+              <div class="grid-3" id="deploy-insights"></div>
+            </div>
+          </div>
         </div>
-        <div class="stat stat--stopped">
-          <span class="stat-value" id="stat-stopped">–</span>
-          <span class="stat-label">Stopped</span>
+      </section>
+
+      <!-- ============================== DOMAINS =============================== -->
+      <section id="view-domains" class="view" data-view-panel="domains">
+        <div class="view-inner">
+          <div id="domains-hero"></div>
+
+          <div class="card card--pad">
+            <div class="lookup">
+              <div>
+                <h2>Domain Lookup</h2>
+                <p>Cari host, aplikasi, repo, atau branch yang terhubung ke panel.</p>
+              </div>
+              <label class="search-box search-box--wide" for="domain-search">
+                <span data-icon="search"></span>
+                <input id="domain-search" type="search" placeholder="Cari domain atau aplikasi…" autocomplete="off" />
+              </label>
+            </div>
+            <div class="callout">
+              <span data-icon="info"></span>
+              <span>URL aplikasi dibentuk dari <code>APP_HOST</code> + <code>port</code> pada katalog. DNS/SSL domain produksi tetap diatur di reverse proxy.</span>
+            </div>
+          </div>
+
+          <div class="section-head">
+            <div>
+              <h2>Assigned Domains</h2>
+              <p>Endpoint internal yang bisa dibuka dari jaringan panel.</p>
+            </div>
+            <span class="chip chip--mono" id="domains-count">–</span>
+          </div>
+          <div id="domains-list" class="stack" aria-live="polite"></div>
+          <div id="domains-help" class="grid-2"></div>
         </div>
-        <div class="stat stat--idle">
-          <span class="stat-value" id="stat-idle">–</span>
-          <span class="stat-label">Belum deploy</span>
+      </section>
+
+      <!-- ============================ ENVIRONMENT ============================ -->
+      <section id="view-environment" class="view" data-view-panel="environment">
+        <div class="view-inner">
+          <div id="env-hero"></div>
+
+          <div class="card">
+            <div class="card-head card-head--pad">
+              <div>
+                <h2>Runtime Variables</h2>
+                <p>Environment yang dikirim panel ke stack saat deploy.</p>
+              </div>
+              <span class="chip chip--mono" id="env-count">–</span>
+            </div>
+
+            <div class="toolbar toolbar--inside">
+              <div class="segmented" id="env-status-filter" role="group" aria-label="Filter status aplikasi">
+                <button class="is-active" type="button" data-env-status="all">Semua <span class="seg-count" id="env-count-all">–</span></button>
+                <button type="button" data-env-status="running">Running <span class="seg-count" id="env-count-running">–</span></button>
+                <button type="button" data-env-status="stopped">Stopped <span class="seg-count" id="env-count-stopped">–</span></button>
+                <button type="button" data-env-status="not_deployed">Belum deploy <span class="seg-count" id="env-count-idle">–</span></button>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="copy-env" type="button">
+                <span data-icon="copy"></span>
+                <span>Copy .env</span>
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Variable</th>
+                    <th>Value</th>
+                    <th>Target</th>
+                    <th>Status</th>
+                    <th>Sumber</th>
+                    <th class="align-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="env-table-body" aria-live="polite"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card card--pad" id="panel-config"></div>
+            <div class="card card--pad">
+              <div class="card-head">
+                <div>
+                  <h2>Keamanan Secret</h2>
+                  <p>Nilai sensitif tidak pernah dikirim ke browser.</p>
+                </div>
+                <span class="insight-icon" data-icon="shield"></span>
+              </div>
+              <div class="config-list">
+                <div class="config-row">
+                  <span>API key Portainer</span>
+                  <strong id="secret-portainer">Hanya status</strong>
+                </div>
+                <div class="config-row">
+                  <span>GitHub token</span>
+                  <strong id="secret-github">Hanya status</strong>
+                </div>
+                <div class="config-row">
+                  <span>APP_PORT</span>
+                  <strong>Dikirim ke stack</strong>
+                </div>
+              </div>
+              <div class="callout callout--flush">
+                <span data-icon="lock"></span>
+                <span>Isi <code>.env</code> dibaca server saja. Panel hanya menampilkan apakah secret sudah dikonfigurasi.</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
+  </div>
 
-    <div id="warning" class="alert hidden" role="alert">
-      <span class="alert-icon" data-icon="alert"></span>
-      <div class="alert-body">
-        <strong>Portainer tidak terhubung</strong>
-        <p id="warning-text"></p>
-      </div>
-      <button id="retry" class="btn btn-ghost btn-sm" type="button">Coba lagi</button>
-    </div>
-
-    <section id="apps" class="grid" aria-live="polite" aria-busy="true"></section>
-
-    <div id="empty" class="empty hidden">
-      <span class="empty-icon" data-icon="inbox"></span>
-      <h2>Belum ada aplikasi</h2>
-      <p>Tambahkan entri ke <code>catalog.json</code> untuk mulai deploy.</p>
-    </div>
-  </main>
-
-  <footer class="site-footer">
-    <span>Update manual lewat tombol</span>
-    <span class="dot-sep">·</span>
-    <span>Portainer API di belakang layar</span>
-  </footer>
-
-  <dialog id="confirm-dialog" class="modal">
-    <div class="modal-card modal-card--sm">
-      <div class="modal-icon modal-icon--warn" data-icon="alert"></div>
+  <dialog id="confirm-dialog" class="modal" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="modal-card">
+      <div class="modal-icon" data-icon="alert"></div>
       <h2 id="confirm-title">Konfirmasi</h2>
       <p id="confirm-message" class="modal-text"></p>
       <div class="modal-actions">
         <button id="confirm-cancel" class="btn btn-ghost" type="button">Batal</button>
         <button id="confirm-ok" class="btn btn-danger" type="button">Lanjutkan</button>
       </div>
-    </div>
-  </dialog>
-
-  <dialog id="logs-dialog" class="modal modal--wide">
-    <div class="modal-card modal-card--logs">
-      <div class="modal-head">
-        <div class="modal-head-text">
-          <h2 id="logs-title">Logs</h2>
-          <p id="logs-sub" class="modal-sub">Memuat…</p>
-        </div>
-        <div class="modal-head-actions">
-          <button id="logs-copy" class="btn btn-ghost btn-sm" type="button">Copy</button>
-          <button id="logs-refresh" class="btn btn-ghost btn-sm" type="button">Refresh</button>
-          <button id="logs-close" class="btn btn-ghost btn-sm" type="button">Tutup</button>
-        </div>
-      </div>
-      <pre id="logs-body" class="logs" tabindex="0">Memuat…</pre>
     </div>
   </dialog>
 

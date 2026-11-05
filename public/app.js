@@ -1,17 +1,29 @@
-/* global fetch, navigator, document, window */
+/* global fetch, navigator, document, window, history, location */
+
+// ---------------------------------------------------------------------------
+// Ikon SVG (tanpa dependensi eksternal)
+// ---------------------------------------------------------------------------
 
 const ICONS = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  rocket:
+    '<path d="M5 16s1-4 5-8 8-5 8-5 0 4-4 8-9 5-9 5z"/><path d="M5 16l-2 5 5-2"/><path d="M14.5 8.5h.01"/>',
+  dns: '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 4l3 3"/><path d="M15 6l3 3"/>',
   refresh:
     '<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/>',
-  play: '<polygon points="7 4 20 12 7 20 7 4"/>',
-  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
-  rotate:
-    '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  'chevron-right': '<path d="M9 18l6-6-6-6"/>',
+  'chevron-down': '<path d="M6 9l6 6 6-6"/>',
+  external:
+    '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
+  play: '<polygon points="7 4 20 12 7 20 7 4" fill="currentColor" stroke="none"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',
+  rotate: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
   trash:
     '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
   terminal: '<path d="M4 17l6-5-6-5"/><path d="M12 19h8"/>',
-  external:
-    '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
   github:
     '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-.9-2.6c3-.3 6.1-1.5 6.1-6.7A5.2 5.2 0 0 0 19.8 4 4.9 4.9 0 0 0 19.7 1S18.6.6 16 2.4a12.3 12.3 0 0 0-6.4 0C7 .6 5.9 1 5.9 1a4.9 4.9 0 0 0-.1 3A5.2 5.2 0 0 0 4.4 7.4c0 5.2 3.1 6.4 6.1 6.7a3.4 3.4 0 0 0-.9 2.6V22"/>',
   check: '<path d="M20 6L9 17l-5-5"/>',
@@ -23,6 +35,25 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   inbox:
     '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
+  branch:
+    '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8"/><path d="M18 10c0 3-3 4-6 4H6"/>',
+  server:
+    '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+  lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  arrow: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+  shield:
+    '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>',
+  activity: '<path d="M3 12h4l2-7 4 14 2-7h6"/>',
+  code: '<path d="M8 6l-6 6 6 6"/><path d="M16 6l6 6-6 6"/>',
+  globe:
+    '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3z"/>',
+  filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+  layers:
+    '<path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/>',
+  cloud: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a5 5 0 0 1 1 9.9"/>',
+  zap: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/>',
 };
 
 const STATUS_META = {
@@ -66,56 +97,105 @@ const CONFIRM_SPECS = {
   },
 };
 
+const VIEW_TITLES = {
+  overview: 'Overview',
+  deployments: 'Deployments & Builds',
+  domains: 'Domains & DNS',
+  environment: 'Environment',
+};
+
 const state = {
   apps: [],
+  health: null,
+  host: '',
   portainerError: null,
   loading: true,
-  busy: new Map(), // id -> label aksi
-  repos: new Map(), // id -> { phase, message }
+  view: 'overview',
+  statusFilter: 'all',
+  envFilter: 'all',
+  query: '',
+  selectedId: null,
+  autoScroll: true,
+  busy: new Map(),
+  repos: new Map(),
+  logs: new Map(),
 };
 
 const els = {
-  apps: document.getElementById('apps'),
-  empty: document.getElementById('empty'),
-  warning: document.getElementById('warning'),
-  warningText: document.getElementById('warning-text'),
+  sidebar: document.getElementById('sidebar'),
+  sidebarScrim: document.getElementById('sidebar-scrim'),
+  menuToggle: document.getElementById('menu-toggle'),
+  projectHost: document.getElementById('project-host'),
+  projectSub: document.getElementById('project-sub'),
+  navAppCount: document.getElementById('nav-app-count'),
+  navDomainCount: document.getElementById('nav-domain-count'),
+  navEnvCount: document.getElementById('nav-env-count'),
+  pageTitle: document.getElementById('page-title'),
   connection: document.getElementById('connection'),
   connectionText: document.getElementById('connection-text'),
+  sideConnectionDot: document.getElementById('side-connection-dot'),
+  sideConnectionText: document.getElementById('side-connection-text'),
   refresh: document.getElementById('refresh'),
+  globalSearch: document.getElementById('global-search'),
+  domainSearch: document.getElementById('domain-search'),
+  warning: document.getElementById('warning'),
+  warningText: document.getElementById('warning-text'),
   retry: document.getElementById('retry'),
-  statTotal: document.getElementById('stat-total'),
-  statRunning: document.getElementById('stat-running'),
-  statStopped: document.getElementById('stat-stopped'),
-  statIdle: document.getElementById('stat-idle'),
+  overviewHero: document.getElementById('overview-hero'),
+  overviewMetrics: document.getElementById('overview-metrics'),
+  overviewFleet: document.getElementById('overview-fleet'),
+  overviewFleetCount: document.getElementById('overview-fleet-count'),
+  overviewRecent: document.getElementById('overview-recent'),
+  overviewDomains: document.getElementById('overview-domains'),
+  overviewEnv: document.getElementById('overview-env'),
+  overviewPlatform: document.getElementById('overview-platform'),
+  deployHero: document.getElementById('deploy-hero'),
+  deployCountAll: document.getElementById('deploy-count-all'),
+  deployCountRunning: document.getElementById('deploy-count-running'),
+  deployCountStopped: document.getElementById('deploy-count-stopped'),
+  deployCountIdle: document.getElementById('deploy-count-idle'),
+  deployFilterNote: document.getElementById('deploy-filter-note'),
+  deployQueueCount: document.getElementById('deploy-queue-count'),
+  deployList: document.getElementById('deploy-list'),
+  deploymentDetail: document.getElementById('deployment-detail'),
+  deployConsole: document.getElementById('deploy-console'),
+  deployInsights: document.getElementById('deploy-insights'),
+  domainsHero: document.getElementById('domains-hero'),
+  domainsCount: document.getElementById('domains-count'),
+  domainsList: document.getElementById('domains-list'),
+  domainsHelp: document.getElementById('domains-help'),
+  envHero: document.getElementById('env-hero'),
+  envCount: document.getElementById('env-count'),
+  envCountAll: document.getElementById('env-count-all'),
+  envCountRunning: document.getElementById('env-count-running'),
+  envCountStopped: document.getElementById('env-count-stopped'),
+  envCountIdle: document.getElementById('env-count-idle'),
+  envTableBody: document.getElementById('env-table-body'),
+  panelConfig: document.getElementById('panel-config'),
+  secretPortainer: document.getElementById('secret-portainer'),
+  secretGithub: document.getElementById('secret-github'),
+  copyEnv: document.getElementById('copy-env'),
   confirmDialog: document.getElementById('confirm-dialog'),
   confirmTitle: document.getElementById('confirm-title'),
   confirmMessage: document.getElementById('confirm-message'),
   confirmOk: document.getElementById('confirm-ok'),
   confirmCancel: document.getElementById('confirm-cancel'),
-  logsDialog: document.getElementById('logs-dialog'),
-  logsTitle: document.getElementById('logs-title'),
-  logsSub: document.getElementById('logs-sub'),
-  logsBody: document.getElementById('logs-body'),
-  logsCopy: document.getElementById('logs-copy'),
-  logsRefresh: document.getElementById('logs-refresh'),
-  logsClose: document.getElementById('logs-close'),
   toastRegion: document.getElementById('toast-region'),
 };
 
 let confirmResolver = null;
-let logsAppId = null;
 
 // ---------------------------------------------------------------------------
 // Util
 // ---------------------------------------------------------------------------
 
 function icon(name, className = 'icon') {
-  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
 
-function hydrateStaticIcons() {
-  document.querySelectorAll('[data-icon]').forEach((el) => {
-    el.innerHTML = icon(el.dataset.icon);
+function hydrateStaticIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach((node) => {
+    node.innerHTML = icon(node.dataset.icon);
   });
 }
 
@@ -135,6 +215,14 @@ function shortRepo(repo) {
 
 function displayUrl(url) {
   return String(url || '').replace(/^https?:\/\//, '');
+}
+
+function urlHost(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return displayUrl(url);
+  }
 }
 
 function initialsOf(name) {
@@ -164,6 +252,97 @@ function formatDate(value) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function relativeTime(value) {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+
+  const diff = Date.now() - date.getTime();
+  if (diff < 0) return formatDate(value);
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 45) return 'baru saja';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} mnt lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} hari lalu`;
+  return formatDate(value);
+}
+
+function formatUptime(seconds) {
+  const total = Number(seconds);
+  if (!Number.isFinite(total) || total < 0) return '—';
+  if (total < 60) return `${Math.round(total)} dtk`;
+  const minutes = Math.floor(total / 60);
+  if (minutes < 60) return `${minutes} mnt`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam ${minutes % 60} mnt`;
+  return `${Math.floor(hours / 24)} hari ${hours % 24} jam`;
+}
+
+function statusMeta(status) {
+  return STATUS_META[status] || STATUS_META.unknown;
+}
+
+function currentHost() {
+  return state.health?.appHost || state.host || 'host belum diketahui';
+}
+
+function counts() {
+  return {
+    total: state.apps.length,
+    running: state.apps.filter((app) => app.status === 'running').length,
+    stopped: state.apps.filter((app) => app.status === 'stopped').length,
+    idle: state.apps.filter((app) => app.status === 'not_deployed').length,
+    unknown: state.apps.filter((app) => app.status === 'unknown').length,
+  };
+}
+
+function filterApps(apps) {
+  const query = state.query.trim().toLowerCase();
+  if (!query) return apps;
+  return apps.filter((app) =>
+    [app.id, app.name, app.description, app.repo, app.branch, app.port]
+      .join(' ')
+      .toLowerCase()
+      .includes(query)
+  );
+}
+
+function getSelectedApp() {
+  let app = state.apps.find((entry) => entry.id === state.selectedId) || null;
+  if (!app && state.apps.length > 0) {
+    app = state.apps[0];
+    state.selectedId = app.id;
+  }
+  if (!app) state.selectedId = null;
+  return app;
+}
+
+function repoCheckHtml(check) {
+  if (!check) {
+    return `<p class="repo-note">${icon('info')}<span>Cek repo untuk memastikan branch dan file compose tersedia sebelum deploy.</span></p>`;
+  }
+  if (check.phase === 'loading') {
+    return `<p class="repo-check repo-check--pending">${icon('loader', 'icon spin')}<span>Menghubungi GitHub…</span></p>`;
+  }
+  const ok = check.phase === 'ok';
+  return `<p class="repo-check repo-check--${ok ? 'ok' : 'error'}">${icon(ok ? 'check' : 'alert')}<span>${escapeHtml(check.message)}</span></p>`;
+}
+
+function emptyState(iconName, title, message, actionHtml = '') {
+  return `<div class="empty">${icon(iconName)}<strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionHtml}</div>`;
+}
+
+function skeletonList(count = 3) {
+  return Array.from({ length: count })
+    .map(
+      () => `<div class="skel-item" aria-hidden="true"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line skel-line--short"></div><div class="skel skel-actions"></div></div>`
+    )
+    .join('');
 }
 
 async function api(path, options = {}) {
@@ -208,15 +387,41 @@ async function api(path, options = {}) {
   return data;
 }
 
+async function copyText(text) {
+  const value = String(text ?? '');
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Jatuh ke fallback di bawah (mis. izin clipboard ditolak).
+    }
+  }
+  try {
+    const area = document.createElement('textarea');
+    area.value = value;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Toast
 // ---------------------------------------------------------------------------
 
 function toast(type, title, message) {
   const iconName = type === 'success' ? 'check' : type === 'error' ? 'alert' : 'info';
-  const el = document.createElement('div');
-  el.className = `toast toast--${type}`;
-  el.innerHTML = `
+  const node = document.createElement('div');
+  node.className = `toast toast--${type}`;
+  node.innerHTML = `
     <span class="toast-icon">${icon(iconName)}</span>
     <div class="toast-body">
       <strong>${escapeHtml(title)}</strong>
@@ -227,160 +432,959 @@ function toast(type, title, message) {
 
   const remove = () => {
     clearTimeout(timer);
-    el.classList.remove('is-visible');
-    setTimeout(() => el.remove(), 200);
+    node.classList.remove('is-visible');
+    setTimeout(() => node.remove(), 200);
   };
   const timer = setTimeout(remove, 5200);
 
-  el.querySelector('.toast-close').addEventListener('click', remove);
-  els.toastRegion.appendChild(el);
+  node.querySelector('.toast-close').addEventListener('click', remove);
+  els.toastRegion.appendChild(node);
 
   while (els.toastRegion.children.length > 3) {
     els.toastRegion.firstElementChild.remove();
   }
 
-  requestAnimationFrame(() => el.classList.add('is-visible'));
+  requestAnimationFrame(() => node.classList.add('is-visible'));
+}
+
+// ---------------------------------------------------------------------------
+// Hero dekorasi
+// ---------------------------------------------------------------------------
+
+function heroWaves(variant = 'soft') {
+  const primary = variant === 'deploy' ? 'rgba(255,255,255,0.55)' : '#5046E5';
+  const secondary = variant === 'deploy' ? 'rgba(87,223,254,0.8)' : '#00687A';
+  const tertiary = variant === 'deploy' ? 'rgba(255,255,255,0.32)' : '#3625CD';
+  return `
+    <svg class="hero__waves" viewBox="0 0 400 200" fill="none" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M50 20C120 180 220 -20 320 120C380 200 420 100 450 60" stroke="${primary}" stroke-dasharray="4 6" stroke-linecap="round" stroke-width="2.5"></path>
+      <path d="M30 60C100 220 200 20 300 160C360 240 400 140 430 100" stroke="${secondary}" stroke-linecap="round" stroke-width="2"></path>
+      <path d="M10 100C80 260 180 60 280 200C340 280 380 180 410 140" stroke="${tertiary}" stroke-width="1.5"></path>
+      <circle cx="280" cy="80" fill="#57DFFE" fill-opacity="0.22" r="48"></circle>
+      <circle cx="160" cy="120" fill="${variant === 'deploy' ? '#ffffff' : '#5046E5'}" fill-opacity="0.12" r="64"></circle>
+    </svg>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Navigasi / chrome
+// ---------------------------------------------------------------------------
+
+function closeSidebar() {
+  document.body.classList.remove('sidebar-open');
+  els.menuToggle.setAttribute('aria-expanded', 'false');
+  els.sidebarScrim.hidden = true;
+}
+
+function openSidebar() {
+  document.body.classList.add('sidebar-open');
+  els.menuToggle.setAttribute('aria-expanded', 'true');
+  els.sidebarScrim.hidden = false;
+}
+
+function setView(view, { updateHash = true } = {}) {
+  state.view = VIEW_TITLES[view] ? view : 'overview';
+  if (updateHash && location.hash !== `#${state.view}`) {
+    history.replaceState(null, '', `#${state.view}`);
+  }
+  closeSidebar();
+  renderViewState();
+  render();
+  if (state.view === 'deployments') {
+    const app = getSelectedApp();
+    if (app) maybeAutoLoadLogs(app);
+  }
+}
+
+function renderViewState() {
+  document.querySelectorAll('[data-view-panel]').forEach((panel) => {
+    const active = panel.dataset.viewPanel === state.view;
+    panel.classList.toggle('is-active', active);
+    panel.hidden = !active;
+  });
+
+  document.querySelectorAll('.nav-item[data-view]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.view === state.view);
+  });
+
+  els.pageTitle.textContent = VIEW_TITLES[state.view] || 'Overview';
+}
+
+function updateChrome() {
+  const offline = Boolean(state.portainerError);
+  const loading = state.loading && state.apps.length === 0;
+  const host = currentHost();
+  const health = state.health;
+
+  els.projectHost.textContent = host;
+  els.projectSub.textContent = health
+    ? `${state.apps.length} aplikasi · endpoint ${health.endpointId ?? '—'}`
+    : `${state.apps.length} aplikasi di katalog`;
+
+  els.navAppCount.textContent = String(state.apps.length);
+  els.navDomainCount.textContent = String(state.apps.length);
+  els.navEnvCount.textContent = String(state.apps.length);
+
+  const connClass = offline ? 'conn conn--bad' : loading ? 'conn conn--neutral' : 'conn conn--ok';
+  els.connection.className = connClass;
+  els.connectionText.textContent = offline
+    ? 'Portainer terputus'
+    : loading
+      ? 'Menghubungkan…'
+      : 'Portainer terhubung';
+
+  els.sideConnectionDot.className = `conn-dot ${offline ? 'is-bad' : loading ? '' : 'is-ok'}`;
+  els.sideConnectionText.textContent = offline
+    ? 'Portainer terputus'
+    : loading
+      ? 'Menghubungkan…'
+      : 'Portainer terhubung';
+
+  if (offline) {
+    els.warning.classList.remove('hidden');
+    els.warningText.textContent = state.portainerError;
+  } else {
+    els.warning.classList.add('hidden');
+    els.warningText.textContent = '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Overview
+// ---------------------------------------------------------------------------
+
+function renderOverview() {
+  const c = counts();
+  const host = currentHost();
+  const health = state.health;
+  const online = !state.portainerError;
+  const loading = state.loading && state.apps.length === 0;
+  const heroStatusClass = loading
+    ? 'status-pill--neutral'
+    : online
+      ? 'status-pill--ok'
+      : 'status-pill--bad';
+  const heroStatusText = loading
+    ? 'Menghubungkan…'
+    : online
+      ? 'Portainer terhubung'
+      : 'Portainer terputus';
+
+  els.overviewHero.innerHTML = `
+    <div class="hero hero--soft">
+      ${heroWaves('soft')}
+      <span class="hero__glow hero__glow--a"></span>
+      <span class="hero__glow hero__glow--b"></span>
+      <div class="hero__body">
+        <div class="hero__copy">
+          <div class="hero__eyebrow">
+            <span class="status-pill ${heroStatusClass}">
+              <span class="status-dot"></span>
+              ${heroStatusText}
+            </span>
+            <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
+            <span class="muted mono">${c.total} aplikasi</span>
+          </div>
+          <h1>Katalog Aplikasi</h1>
+          <p>Deploy dan kelola aplikasi dari repo GitHub tanpa membuka Portainer. Semua aksi tetap melalui API panel yang aman.</p>
+          <div class="hero__meta">
+            <span class="meta-pill">${icon('activity')} ${c.running} running</span>
+            <span class="meta-pill">${icon('clock')} ${health?.uptime ? formatUptime(health.uptime) : 'Panel siap'}</span>
+            <span class="meta-pill">${icon('server')} ${health ? `endpoint ${escapeHtml(health.endpointId ?? '—')}` : 'menunggu health'}</span>
+          </div>
+        </div>
+        <div class="hero__actions">
+          <button class="btn btn-secondary" type="button" data-view="deployments">${icon('rocket')}<span>Kelola deployment</span></button>
+          <button class="btn btn-primary" type="button" data-action="refresh">${icon('refresh')}<span>Refresh status</span></button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  els.overviewMetrics.innerHTML = [
+    {
+      label: 'Total Aplikasi',
+      value: c.total,
+      hint: 'di katalog',
+      icon: 'layers',
+      tone: '',
+    },
+    {
+      label: 'Running',
+      value: c.running,
+      hint: 'container aktif',
+      icon: 'activity',
+      tone: 'success',
+    },
+    {
+      label: 'Stopped',
+      value: c.stopped,
+      hint: 'container berhenti',
+      icon: 'stop',
+      tone: 'warning',
+    },
+    {
+      label: 'Belum deploy',
+      value: c.idle,
+      hint: 'menunggu deploy',
+      icon: 'cloud',
+      tone: 'muted',
+    },
+  ]
+    .map(
+      (metric) => `
+        <div class="metric-card">
+          <div class="metric-card__top">
+            <div>
+              <span class="metric-label">${metric.label}</span>
+              <strong class="metric-value">${metric.value}</strong>
+            </div>
+            <span class="metric-icon ${metric.tone ? `metric-icon--${metric.tone}` : ''}">${icon(metric.icon)}</span>
+          </div>
+          <div class="metric-foot">
+            <span>${metric.hint}</span>
+            <strong>${c.total > 0 ? Math.round((metric.value / c.total) * 100) : 0}%</strong>
+          </div>
+        </div>
+      `
+    )
+    .join('');
+
+  const filtered = filterApps(state.apps);
+  els.overviewFleetCount.textContent = `${filtered.length} app`;
+  els.overviewFleet.innerHTML = overviewFleetHtml(filtered);
+  els.overviewRecent.innerHTML = overviewRecentHtml();
+
+  els.overviewDomains.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h2>Assigned Domains</h2>
+        <p>Endpoint aplikasi dari host panel.</p>
+      </div>
+      <button class="icon-btn" type="button" data-view="domains" title="Buka domains">${icon('arrow')}</button>
+    </div>
+    ${
+      state.apps.length
+        ? `<div class="summary-list">${state.apps
+            .slice(0, 4)
+            .map(
+              (app) => `
+                <div class="summary-row">
+                  <span class="status-dot ${statusDotClass(app.status)}"></span>
+                  <span class="summary-row__main">
+                    <strong>${escapeHtml(displayUrl(app.url))}</strong>
+                    <small>${escapeHtml(app.name)}</small>
+                  </span>
+                  <span class="summary-row__value">:${escapeHtml(app.port)}</span>
+                </div>
+              `
+            )
+            .join('')}</div>`
+        : emptyState('globe', 'Belum ada domain', 'Tambahkan aplikasi ke katalog.')
+    }
+  `;
+
+  els.overviewEnv.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h2>Environment</h2>
+        <p>APP_PORT yang dikirim otomatis.</p>
+      </div>
+      <button class="icon-btn" type="button" data-view="environment" title="Buka environment">${icon('arrow')}</button>
+    </div>
+    ${
+      state.apps.length
+        ? `<div class="summary-list">${state.apps
+            .slice(0, 4)
+            .map(
+              (app) => `
+                <div class="summary-row">
+                  <span class="summary-row__main">
+                    <strong>APP_PORT</strong>
+                    <small>${escapeHtml(app.id)}</small>
+                  </span>
+                  <span class="summary-row__value">${escapeHtml(app.port)}</span>
+                </div>
+              `
+            )
+            .join('')}</div>`
+        : emptyState('key', 'Belum ada variabel', 'APP_PORT dibuat saat aplikasi ditambahkan.')
+    }
+  `;
+
+  const healthRows = [
+    ['APP_HOST', health?.appHost || state.host || '—'],
+    ['PORTAINER_URL', health?.portainerUrl || '—'],
+    ['API key', health?.apiKeyConfigured ? 'Terkonfigurasi' : 'Belum diset'],
+    ['GitHub token', health?.githubTokenConfigured ? 'Terkonfigurasi' : 'Tidak diset'],
+  ];
+
+  els.overviewPlatform.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h2>Platform</h2>
+        <p>Konfigurasi panel aktif.</p>
+      </div>
+      <span class="insight-icon">${icon('shield')}</span>
+    </div>
+    <div class="config-list">
+      ${healthRows
+        .map(
+          ([key, value]) => `
+            <div class="config-row">
+              <span>${escapeHtml(key)}</span>
+              <strong title="${escapeHtml(value)}">${escapeHtml(value)}</strong>
+            </div>
+          `
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function overviewFleetHtml(apps) {
+  if (state.loading && state.apps.length === 0) return skeletonList(2);
+  if (state.apps.length === 0) {
+    return emptyState('inbox', 'Belum ada aplikasi', 'Tambahkan entri ke catalog.json untuk mulai deploy.');
+  }
+  if (apps.length === 0) {
+    return emptyState('search', 'Tidak ada hasil', 'Coba kata kunci lain.');
+  }
+
+  return apps
+    .map((app) => {
+      const meta = statusMeta(app.status);
+      const busyLabel = state.busy.get(app.id);
+      return `
+        <article class="fleet-item">
+          <div class="fleet-item__top">
+            <span class="avatar avatar--${hashIndex(app.id, 5)}" aria-hidden="true">${escapeHtml(initialsOf(app.name))}</span>
+            <div class="fleet-item__title">
+              <h3>${escapeHtml(app.name)}</h3>
+              <p>${escapeHtml(app.description || 'Tanpa deskripsi')}</p>
+            </div>
+            <span class="badge badge--${meta.cls}"><span class="status-dot"></span>${meta.label}</span>
+          </div>
+          <div class="fleet-item__meta">
+            <span class="chip chip--mono">${icon('branch')}${escapeHtml(app.branch)}</span>
+            <span class="chip chip--mono">${icon('server')}:${escapeHtml(app.port)}</span>
+            <a class="chip chip--link" href="${escapeHtml(app.repo)}" target="_blank" rel="noopener" title="${escapeHtml(app.repo)}">${icon('github')}${escapeHtml(shortRepo(app.repo))}</a>
+          </div>
+          <div class="fleet-item__actions">
+            ${busyLabel ? `<span class="working">${icon('loader', 'icon spin')}<span>${escapeHtml(busyLabel)}…</span></span>` : fleetActions(app)}
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function fleetActions(app) {
+  const parts = [];
+  if (app.status === 'running') {
+    parts.push(
+      `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Open</span></a>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="logs" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Logs</span></button>`
+    );
+  } else if (app.status === 'stopped') {
+    parts.push(
+      `<button class="btn btn-primary btn-sm" type="button" data-action="start" data-id="${escapeHtml(app.id)}">${icon('play')}<span>Start</span></button>`
+    );
+    parts.push(
+      `<button class="btn btn-ghost btn-sm" type="button" data-action="logs" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Logs</span></button>`
+    );
+  } else if (app.status === 'not_deployed') {
+    parts.push(
+      `<button class="btn btn-primary btn-sm" type="button" data-action="deploy" data-id="${escapeHtml(app.id)}">${icon('play')}<span>Deploy</span></button>`
+    );
+  }
+  parts.push(
+    `<button class="btn btn-secondary btn-sm" type="button" data-select-app="${escapeHtml(app.id)}">${icon('arrow')}<span>Detail</span></button>`
+  );
+  return parts.join('');
+}
+
+function overviewRecentHtml() {
+  const deployed = state.apps
+    .filter((app) => app.deployedAt)
+    .sort((a, b) => new Date(b.deployedAt).getTime() - new Date(a.deployedAt).getTime());
+
+  if (state.loading && state.apps.length === 0) return skeletonList(2);
+  if (deployed.length === 0) {
+    return emptyState('clock', 'Belum ada deployment', 'Deploy aplikasi pertama dari katalog.');
+  }
+
+  return deployed
+    .slice(0, 5)
+    .map((app) => {
+      const meta = statusMeta(app.status);
+      return `
+        <button class="feed-item" type="button" data-select-app="${escapeHtml(app.id)}">
+          <span class="feed-status feed-status--${meta.cls}"></span>
+          <span class="feed-item__body">
+            <span class="feed-item__title">${escapeHtml(app.name)} <span class="chip chip--mono">${escapeHtml(app.branch)}</span></span>
+            <span class="feed-item__sub">${escapeHtml(shortRepo(app.repo))}</span>
+          </span>
+          <span class="feed-item__meta">
+            <strong>${escapeHtml(relativeTime(app.deployedAt))}</strong>
+            <span>${escapeHtml(formatDate(app.deployedAt))}</span>
+          </span>
+          ${icon('chevron-right', 'feed-chevron')}
+        </button>
+      `;
+    })
+    .join('');
+}
+
+function statusDotClass(status) {
+  if (status === 'running') return 'is-ok';
+  if (status === 'stopped') return 'is-bad';
+  return '';
+}
+
+// ---------------------------------------------------------------------------
+// Deployments
+// ---------------------------------------------------------------------------
+
+function renderDeployments() {
+  const c = counts();
+  const host = currentHost();
+
+  els.deployHero.innerHTML = `
+    <div class="hero hero--deploy">
+      ${heroWaves('deploy')}
+      <span class="hero__glow hero__glow--a"></span>
+      <span class="hero__glow hero__glow--b"></span>
+      <div class="hero__body">
+        <div class="hero__copy">
+          <div class="hero__eyebrow">
+            <span class="status-pill status-pill--neutral">${icon('rocket')} Control Center</span>
+            <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
+          </div>
+          <h1>Deployments &amp; Build Logs</h1>
+          <p>Pantau status pipeline, jalankan aksi Portainer, dan baca log container tanpa berpindah aplikasi.</p>
+          <div class="hero__meta">
+            <span class="meta-pill">${icon('layers')} ${c.total} aplikasi</span>
+            <span class="meta-pill">${icon('activity')} ${c.running} running</span>
+            <span class="meta-pill">${icon('alert')} ${c.unknown} tidak diketahui</span>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span>Total</span><strong>${c.total}</strong><small>katalog</small></div>
+          <div class="hero-stat"><span>Running</span><strong>${c.running}</strong><small>aktif</small></div>
+          <div class="hero-stat"><span>Stopped</span><strong>${c.stopped}</strong><small>berhenti</small></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  els.deployCountAll.textContent = String(c.total);
+  els.deployCountRunning.textContent = String(c.running);
+  els.deployCountStopped.textContent = String(c.stopped);
+  els.deployCountIdle.textContent = String(c.idle);
+
+  document.querySelectorAll('[data-filter-status]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.filterStatus === state.statusFilter);
+  });
+
+  let filtered = filterApps(state.apps);
+  if (state.statusFilter !== 'all') {
+    filtered = filtered.filter((app) => app.status === state.statusFilter);
+  }
+
+  els.deployQueueCount.textContent = `${filtered.length} app`;
+  els.deployFilterNote.textContent = `${filtered.length} dari ${state.apps.length} aplikasi ditampilkan${
+    state.query ? ' · pencarian aktif' : ''
+  }`;
+
+  const selected = getSelectedApp();
+
+  els.deployList.innerHTML = deployQueueHtml(filtered, selected);
+  els.deploymentDetail.innerHTML = selected ? detailHtml(selected) : emptyDetailHtml();
+  els.deployConsole.innerHTML = selected ? consoleHtml(selected) : '';
+  els.deployInsights.innerHTML = selected ? insightsHtml(selected) : '';
+
+  scrollConsole();
+}
+
+function deployQueueHtml(apps, selected) {
+  if (state.loading && state.apps.length === 0) return skeletonList(3);
+  if (state.apps.length === 0) {
+    return emptyState('inbox', 'Belum ada aplikasi', 'Tambahkan entri ke catalog.json untuk mulai deploy.');
+  }
+  if (apps.length === 0) {
+    return emptyState('search', 'Tidak ada hasil', 'Ubah filter atau kata kunci pencarian.');
+  }
+
+  return apps
+    .map((app) => {
+      const meta = statusMeta(app.status);
+      return `
+        <div class="queue-item${selected?.id === app.id ? ' is-selected' : ''}" role="button" tabindex="0" data-select-app="${escapeHtml(app.id)}" aria-label="Pilih ${escapeHtml(app.name)}">
+          <span class="queue-status queue-status--${meta.cls}"></span>
+          <span class="queue-item__body">
+            <span class="queue-item__title"><strong>${escapeHtml(app.name)}</strong><span class="badge badge--${meta.cls}">${meta.label}</span></span>
+            <span class="queue-item__meta">
+              <span>${icon('branch')}${escapeHtml(app.branch)}</span>
+              <span>${icon('server')}:${escapeHtml(app.port)}</span>
+            </span>
+            <span class="queue-item__sub">${escapeHtml(shortRepo(app.repo))}</span>
+          </span>
+          ${icon('chevron-right', 'queue-chevron')}
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function emptyDetailHtml() {
+  return `
+    <div class="card card--pad">
+      ${emptyState('inbox', 'Belum ada aplikasi', 'Tambahkan aplikasi ke catalog.json untuk melihat detail deployment.')}
+    </div>
+  `;
+}
+
+function detailHtml(app) {
+  const meta = statusMeta(app.status);
+  const busyLabel = state.busy.get(app.id);
+  const check = state.repos.get(app.id);
+
+  return `
+    <div class="card detail-card">
+      <div class="detail-head">
+        <div class="detail-icon">${icon('rocket')}</div>
+        <div class="detail-title">
+          <div class="detail-title-row">
+            <h2>${escapeHtml(app.name)}</h2>
+            <span class="badge badge--${meta.cls}"><span class="status-dot"></span>${meta.label}</span>
+            <span class="chip chip--mono">${escapeHtml(app.id)}</span>
+          </div>
+          <a class="detail-url" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('link')}${escapeHtml(displayUrl(app.url))}${icon('external')}</a>
+          <p>${escapeHtml(app.description || 'Tanpa deskripsi')}</p>
+        </div>
+        <div class="detail-quick-actions">
+          ${
+            app.status === 'running'
+              ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Open</span></a>`
+              : ''
+          }
+          ${
+            app.status !== 'not_deployed'
+              ? `<button class="btn btn-secondary btn-sm" type="button" data-action="logs" data-id="${escapeHtml(app.id)}">${icon('terminal')}<span>Logs</span></button>`
+              : ''
+          }
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-tile"><span>Branch</span><strong class="mono">${icon('branch')}${escapeHtml(app.branch)}</strong></div>
+        <div class="meta-tile"><span>Port</span><strong class="mono">${icon('server')}${escapeHtml(app.port)}</strong></div>
+        <div class="meta-tile"><span>Deploy terakhir</span><strong>${escapeHtml(relativeTime(app.deployedAt))}</strong></div>
+        <div class="meta-tile"><span>Stack ID</span><strong class="mono">${app.stackId != null ? escapeHtml(app.stackId) : '—'}</strong></div>
+      </div>
+
+      <div class="action-bar">
+        ${busyLabel ? `<span class="working">${icon('loader', 'icon spin')}<span>${escapeHtml(busyLabel)}…</span></span>` : actionButtons(app)}
+      </div>
+
+      ${repoCheckHtml(check)}
+    </div>
+  `;
+}
+
+function actionButtons(app) {
+  const parts = [];
+  for (const action of ACTIONS_BY_STATUS[app.status] || []) {
+    const meta = ACTIONS[action];
+    if (!meta) continue;
+    parts.push(
+      `<button class="btn ${meta.cls} btn-sm" type="button" data-action="${action}" data-id="${escapeHtml(app.id)}">${icon(meta.icon)}<span>${meta.label}</span></button>`
+    );
+  }
+  parts.push(
+    `<button class="btn btn-ghost btn-sm" type="button" data-action="check" data-id="${escapeHtml(app.id)}">${icon('github')}<span>Cek repo</span></button>`
+  );
+  return parts.join('');
+}
+
+function consoleHtml(app) {
+  const entry = state.logs.get(app.id);
+  const containerNames = (entry?.containers || []).map((container) => container.name).filter(Boolean);
+  const containerLabel = containerNames.length ? containerNames.join(', ') : app.name;
+
+  let body = '';
+  if (app.status === 'not_deployed') {
+    body = `<div class="console-empty">${icon('inbox')}<p>Stack belum di-deploy. Log akan tersedia setelah aplikasi berjalan.</p></div>`;
+  } else if (!entry) {
+    body = `<div class="console-empty">${icon('terminal')}<p>Log belum dimuat.</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Muat log</span></button></div>`;
+  } else if (entry.phase === 'loading') {
+    body = `<div class="console-empty">${icon('loader', 'icon spin')}<p>Mengambil log container dari Portainer…</p></div>`;
+  } else if (entry.phase === 'error') {
+    body = `<div class="console-empty console-empty--error">${icon('alert')}<p>${escapeHtml(entry.message || 'Gagal mengambil log.')}</p><button class="btn btn-secondary btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}">${icon('refresh')}<span>Coba lagi</span></button></div>`;
+  } else {
+    body = `<pre class="console-pre" id="console-pre">${escapeHtml(entry.text || '(log kosong)')}</pre>`;
+  }
+
+  const fetchedLabel = entry?.fetchedAt ? `Diambil ${relativeTime(entry.fetchedAt)}` : 'Belum dimuat';
+  const stateLabel =
+    app.status === 'running' ? 'Container aktif' : app.status === 'stopped' ? 'Container berhenti' : 'Menunggu deploy';
+
+  return `
+    <div class="console-card">
+      <div class="console-head">
+        <div class="console-tabs">
+          <span class="console-dot"></span>
+          <span>Log Container</span>
+          <span class="chip chip--mono" title="${escapeHtml(containerLabel)}">${escapeHtml(containerLabel)}</span>
+        </div>
+        <div class="console-controls">
+          <label>
+            <input type="checkbox" id="autoscroll" ${state.autoScroll ? 'checked' : ''} />
+            <span>Auto-scroll</span>
+          </label>
+          <button class="btn btn-ghost btn-sm" type="button" data-action="logs-refresh" data-id="${escapeHtml(app.id)}" ${entry?.phase === 'loading' ? 'disabled' : ''}>${icon('refresh')}<span>Muat ulang</span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-action="logs-copy" data-id="${escapeHtml(app.id)}" ${entry?.phase === 'ready' ? '' : 'disabled'}>${icon('copy')}<span>Copy</span></button>
+        </div>
+      </div>
+      <div class="console-term">
+        <div class="console-meta">
+          <span>${icon('terminal')} Portainer API · tail 200</span>
+          <span>${escapeHtml(fetchedLabel)}</span>
+        </div>
+        ${body}
+      </div>
+      <div class="console-foot">
+        <span>${escapeHtml(stateLabel)}</span>
+        <span class="mono">${escapeHtml(app.branch)} · ${escapeHtml(shortRepo(app.repo))}</span>
+      </div>
+    </div>
+  `;
+}
+
+function insightsHtml(app) {
+  const meta = statusMeta(app.status);
+  const check = state.repos.get(app.id);
+  const checkLabel = !check
+    ? 'Belum dicek'
+    : check.phase === 'loading'
+      ? 'Memeriksa…'
+      : check.phase === 'ok'
+        ? 'Siap deploy'
+        : 'Bermasalah';
+
+  return `
+    <div class="card card--pad insight-card">
+      <div class="card-head">
+        <div>
+          <h3>Repository</h3>
+          <p>Sumber deploy aplikasi.</p>
+        </div>
+        <span class="insight-icon">${icon('github')}</span>
+      </div>
+      <div class="config-list">
+        <div class="config-row"><span>Repo</span><a href="${escapeHtml(app.repo)}" target="_blank" rel="noopener" title="${escapeHtml(app.repo)}">${escapeHtml(shortRepo(app.repo))}</a></div>
+        <div class="config-row"><span>Branch</span><strong>${escapeHtml(app.branch)}</strong></div>
+        <div class="config-row"><span>Preflight</span><strong class="${check?.phase === 'ok' ? 'ok' : check?.phase === 'error' ? 'bad' : ''}">${escapeHtml(checkLabel)}</strong></div>
+      </div>
+    </div>
+    <div class="card card--pad insight-card">
+      <div class="card-head">
+        <div>
+          <h3>Akses</h3>
+          <p>Endpoint internal panel.</p>
+        </div>
+        <span class="insight-icon">${icon('globe')}</span>
+      </div>
+      <div class="config-list">
+        <div class="config-row"><span>Host</span><strong title="${escapeHtml(urlHost(app.url))}">${escapeHtml(urlHost(app.url))}</strong></div>
+        <div class="config-row"><span>Port</span><strong>${escapeHtml(app.port)}</strong></div>
+        <div class="config-row"><span>Open</span>${app.status === 'running' ? `<a href="${escapeHtml(app.url)}" target="_blank" rel="noopener">buka aplikasi</a>` : '<strong class="bad">offline</strong>'}</div>
+      </div>
+    </div>
+    <div class="card card--pad insight-card">
+      <div class="card-head">
+        <div>
+          <h3>Deployment</h3>
+          <p>Status dari Portainer.</p>
+        </div>
+        <span class="insight-icon">${icon('activity')}</span>
+      </div>
+      <div class="config-list">
+        <div class="config-row"><span>Status</span><strong class="${app.status === 'running' ? 'ok' : app.status === 'stopped' ? 'bad' : ''}">${meta.label}</strong></div>
+        <div class="config-row"><span>Deploy</span><strong>${escapeHtml(relativeTime(app.deployedAt))}</strong></div>
+        <div class="config-row"><span>Stack ID</span><strong>${app.stackId != null ? escapeHtml(app.stackId) : '—'}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function scrollConsole() {
+  if (!state.autoScroll) return;
+  const pre = document.getElementById('console-pre');
+  if (pre) pre.scrollTop = pre.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// Domains
+// ---------------------------------------------------------------------------
+
+function renderDomains() {
+  const c = counts();
+  const host = currentHost();
+  const online = !state.portainerError;
+  const loading = state.loading && state.apps.length === 0;
+  const domainStatusClass = loading
+    ? 'status-pill--neutral'
+    : online
+      ? 'status-pill--ok'
+      : 'status-pill--bad';
+  const domainStatusText = loading ? 'Menghubungkan…' : online ? 'Panel online' : 'Panel offline';
+
+  els.domainsHero.innerHTML = `
+    <div class="hero hero--domains">
+      ${heroWaves('soft')}
+      <span class="hero__glow hero__glow--a"></span>
+      <span class="hero__glow hero__glow--b"></span>
+      <div class="hero__body">
+        <div class="hero__copy">
+          <div class="hero__eyebrow">
+            <span class="status-pill status-pill--neutral">${icon('dns')} Edge Routing</span>
+            <span class="status-pill ${domainStatusClass}"><span class="status-dot"></span>${domainStatusText}</span>
+            <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
+          </div>
+          <h1>Domains &amp; DNS</h1>
+          <p>Alamat aplikasi yang dibentuk dari host panel dan port katalog. DNS serta sertifikat domain produksi tetap dikelola di reverse proxy.</p>
+          <div class="hero__meta">
+            <span class="meta-pill">${icon('globe')} ${c.total} endpoint</span>
+            <span class="meta-pill">${icon('activity')} ${c.running} aktif</span>
+            <span class="meta-pill">${icon('lock')} HTTP internal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const filtered = filterApps(state.apps);
+  els.domainsCount.textContent = `${filtered.length} host`;
+  els.domainsList.innerHTML = domainsListHtml(filtered);
+  els.domainsHelp.innerHTML = domainsHelpHtml();
+}
+
+function domainsListHtml(apps) {
+  if (state.loading && state.apps.length === 0) return skeletonList(2);
+  if (state.apps.length === 0) {
+    return emptyState('globe', 'Belum ada domain', 'Tambahkan aplikasi ke catalog.json untuk membuat endpoint.');
+  }
+  if (apps.length === 0) {
+    return emptyState('search', 'Domain tidak ditemukan', 'Coba kata kunci lain.');
+  }
+
+  return apps
+    .map((app) => {
+      const meta = statusMeta(app.status);
+      const host = urlHost(app.url);
+      return `
+        <article class="card card--pad domain-card">
+          <div class="domain-head">
+            <div class="domain-icon">${icon('globe')}</div>
+            <div class="domain-title">
+              <div class="domain-title-row">
+                <a href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${escapeHtml(host)}${icon('external')}</a>
+                <span class="badge badge--${meta.cls}">${meta.label}</span>
+                <span class="chip chip--mono">${escapeHtml(app.id)}</span>
+              </div>
+              <p>${escapeHtml(app.name)} — ${escapeHtml(app.description || 'Tanpa deskripsi')}</p>
+            </div>
+            <div class="domain-actions">
+              <button class="btn btn-secondary btn-sm" type="button" data-copy="${escapeHtml(app.url)}">${icon('copy')}<span>Copy URL</span></button>
+              ${
+                app.status === 'running'
+                  ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Open</span></a>`
+                  : `<span class="btn btn-secondary btn-sm is-disabled">${icon('external')}<span>Offline</span></span>`
+              }
+            </div>
+          </div>
+          <div class="domain-meta-grid">
+            <div><span>Target host</span><strong class="mono">${escapeHtml(currentHost())}</strong></div>
+            <div><span>Port</span><strong class="mono">${escapeHtml(app.port)}</strong></div>
+            <div><span>Branch</span><strong class="mono">${escapeHtml(app.branch)}</strong></div>
+            <div><span>Protokol</span><strong>HTTP internal</strong></div>
+          </div>
+          <div class="domain-foot">
+            <span>${icon('info')} URL dibentuk dari APP_HOST + port katalog.</span>
+            <span class="mono">${escapeHtml(shortRepo(app.repo))}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function domainsHelpHtml() {
+  const host = currentHost();
+  const health = state.health;
+  const firstApp = state.apps[0];
+
+  return `
+    <div class="card card--pad">
+      <div class="card-head">
+        <div>
+          <h2>Bagaimana routing bekerja</h2>
+          <p>Panel tidak mengubah DNS otomatis.</p>
+        </div>
+        <span class="insight-icon">${icon('dns')}</span>
+      </div>
+      <ol class="steps">
+        <li><span>1</span><div><strong>APP_HOST</strong><p>Alamat host panel/aplikasi di jaringan internal.</p></div></li>
+        <li><span>2</span><div><strong>Port katalog</strong><p>Setiap aplikasi memakai port unik dari <code>catalog.json</code>.</p></div></li>
+        <li><span>3</span><div><strong>Port mapping</strong><p>Compose aplikasi memetakan port container ke port host tersebut.</p></div></li>
+      </ol>
+      <pre class="code-block">http://${escapeHtml(host)}:${escapeHtml(firstApp?.port ?? 'PORT')}</pre>
+    </div>
+    <div class="card card--pad">
+      <div class="card-head">
+        <div>
+          <h2>Panel host</h2>
+          <p>Konfigurasi aktif dari server.</p>
+        </div>
+        <span class="insight-icon">${icon('server')}</span>
+      </div>
+      <div class="config-list">
+        <div class="config-row"><span>APP_HOST</span><code>${escapeHtml(host)}</code></div>
+        <div class="config-row"><span>Portainer</span><code title="${escapeHtml(health?.portainerUrl || '—')}">${escapeHtml(health?.portainerUrl || '—')}</code></div>
+        <div class="config-row"><span>Endpoint</span><code>${escapeHtml(health?.endpointId ?? '—')}</code></div>
+        <div class="config-row"><span>Total endpoint</span><strong>${state.apps.length}</strong></div>
+      </div>
+      <div class="callout callout--flush">
+        <span>${icon('info')}</span>
+        <span>Untuk domain publik, arahkan DNS ke reverse proxy yang meneruskan ke <code>APP_HOST:port</code>.</span>
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Environment
+// ---------------------------------------------------------------------------
+
+function renderEnvironment() {
+  const c = counts();
+  const host = currentHost();
+  const health = state.health;
+
+  els.envHero.innerHTML = `
+    <div class="hero hero--env">
+      ${heroWaves('soft')}
+      <span class="hero__glow hero__glow--a"></span>
+      <span class="hero__glow hero__glow--b"></span>
+      <div class="hero__body">
+        <div class="hero__copy">
+          <div class="hero__eyebrow">
+            <span class="status-pill status-pill--neutral">${icon('lock')} Runtime Config</span>
+            <span class="chip chip--mono">${icon('server')} ${escapeHtml(host)}</span>
+          </div>
+          <h1>Environment Variables</h1>
+          <p>Panel mengirim <code>APP_PORT</code> ke setiap stack. Secret server tetap read-only dan tidak pernah dikirim ke browser.</p>
+          <div class="hero__meta">
+            <span class="meta-pill">${icon('key')} ${c.total} APP_PORT</span>
+            <span class="meta-pill">${icon('shield')} ${health?.apiKeyConfigured ? 'API key aktif' : 'API key belum diset'}</span>
+            <span class="meta-pill">${icon('clock')} ${health?.uptime ? formatUptime(health.uptime) : 'Panel siap'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  els.envCountAll.textContent = String(c.total);
+  els.envCountRunning.textContent = String(c.running);
+  els.envCountStopped.textContent = String(c.stopped);
+  els.envCountIdle.textContent = String(c.idle);
+
+  document.querySelectorAll('[data-env-status]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.envStatus === state.envFilter);
+  });
+
+  let filtered = filterApps(state.apps);
+  if (state.envFilter !== 'all') {
+    filtered = filtered.filter((app) => app.status === state.envFilter);
+  }
+
+  els.envCount.textContent = `${filtered.length} variabel`;
+  els.envTableBody.innerHTML = envTableHtml(filtered);
+
+  els.panelConfig.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h2>Panel Configuration</h2>
+        <p>Nilai dari environment server.</p>
+      </div>
+      <span class="insight-icon">${icon('server')}</span>
+    </div>
+    <div class="config-list">
+      <div class="config-row"><span>APP_HOST</span><code>${escapeHtml(health?.appHost || state.host || '—')}</code></div>
+      <div class="config-row"><span>ENDPOINT_ID</span><code>${escapeHtml(health?.endpointId ?? '—')}</code></div>
+      <div class="config-row"><span>PORTAINER_URL</span><code title="${escapeHtml(health?.portainerUrl || '—')}">${escapeHtml(health?.portainerUrl || '—')}</code></div>
+      <div class="config-row"><span>PORTAINER_API_KEY</span><strong class="${health?.apiKeyConfigured ? 'ok' : 'bad'}">${health?.apiKeyConfigured ? 'Terkonfigurasi' : 'Belum diset'}</strong></div>
+      <div class="config-row"><span>GITHUB_TOKEN</span><strong class="${health?.githubTokenConfigured ? 'ok' : ''}">${health?.githubTokenConfigured ? 'Terkonfigurasi' : 'Tidak diset'}</strong></div>
+      <div class="config-row"><span>Uptime panel</span><strong>${health?.uptime ? formatUptime(health.uptime) : '—'}</strong></div>
+    </div>
+  `;
+
+  if (els.secretPortainer) {
+    els.secretPortainer.textContent = health?.apiKeyConfigured ? 'Terkonfigurasi' : 'Belum diset';
+    els.secretPortainer.className = health?.apiKeyConfigured ? 'ok' : 'bad';
+  }
+  if (els.secretGithub) {
+    els.secretGithub.textContent = health?.githubTokenConfigured ? 'Terkonfigurasi' : 'Tidak diset';
+    els.secretGithub.className = health?.githubTokenConfigured ? 'ok' : '';
+  }
+}
+
+function envTableHtml(apps) {
+  if (state.loading && state.apps.length === 0) {
+    return `<tr><td colspan="6" style="padding:1.2rem;text-align:center;color:var(--on-surface-variant)">Memuat variabel…</td></tr>`;
+  }
+  if (state.apps.length === 0) {
+    return `<tr><td colspan="6" style="padding:1.2rem;text-align:center;color:var(--on-surface-variant)">Belum ada aplikasi di katalog.</td></tr>`;
+  }
+  if (apps.length === 0) {
+    return `<tr><td colspan="6" style="padding:1.2rem;text-align:center;color:var(--on-surface-variant)">Tidak ada variabel sesuai filter.</td></tr>`;
+  }
+
+  return apps
+    .map((app) => {
+      const meta = statusMeta(app.status);
+      return `
+        <tr>
+          <td><span class="env-key">${icon('key')}APP_PORT</span></td>
+          <td><code class="env-value">${escapeHtml(app.port)}</code></td>
+          <td><span class="env-target"><strong>${escapeHtml(app.name)}</strong><small>${escapeHtml(app.id)}</small></span></td>
+          <td><span class="badge badge--${meta.cls}"><span class="status-dot"></span>${meta.label}</span></td>
+          <td><span class="chip">Otomatis saat deploy</span></td>
+          <td class="align-right">
+            <span class="env-actions">
+              <button class="btn btn-ghost btn-sm" type="button" data-copy="${escapeHtml(app.port)}">${icon('copy')}<span>Copy</span></button>
+            </span>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
 }
 
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
-function renderSkeleton() {
-  els.apps.setAttribute('aria-busy', 'true');
-  els.empty.classList.add('hidden');
-  els.apps.innerHTML = Array.from({ length: 2 })
-    .map(
-      () => `
-      <article class="card skeleton" aria-hidden="true">
-        <div class="skel skel-title"></div>
-        <div class="skel skel-line"></div>
-        <div class="skel skel-line skel-line--short"></div>
-        <div class="skel skel-block"></div>
-        <div class="skel skel-actions"></div>
-      </article>`
-    )
-    .join('');
-}
-
-function updateStats() {
-  const total = state.apps.length;
-  const running = state.apps.filter((app) => app.status === 'running').length;
-  const stopped = state.apps.filter((app) => app.status === 'stopped').length;
-  const idle = state.apps.filter((app) => app.status === 'not_deployed').length;
-
-  els.statTotal.textContent = String(total);
-  els.statRunning.textContent = String(running);
-  els.statStopped.textContent = String(stopped);
-  els.statIdle.textContent = String(idle);
-}
-
-function updateConnection() {
-  if (state.portainerError) {
-    els.connection.className = 'conn conn--bad';
-    els.connectionText.textContent = 'Portainer terputus';
-    els.warningText.textContent = state.portainerError;
-    els.warning.classList.remove('hidden');
-  } else {
-    els.connection.className = 'conn conn--ok';
-    els.connectionText.textContent = 'Portainer terhubung';
-    els.warning.classList.add('hidden');
-  }
-}
-
 function render() {
-  updateConnection();
-  updateStats();
-
-  els.apps.setAttribute('aria-busy', 'false');
-  els.empty.classList.toggle(
-    'hidden',
-    !(state.apps.length === 0 && !state.loading && !state.portainerError)
-  );
-  els.apps.innerHTML = state.apps.map(cardHtml).join('');
-}
-
-function cardHtml(app) {
-  const status = STATUS_META[app.status] || STATUS_META.unknown;
-  const busyLabel = state.busy.get(app.id);
-  const check = state.repos.get(app.id);
-  const checking = check?.phase === 'loading';
-
-  return `
-    <article class="card card--${status.cls}${busyLabel ? ' is-busy' : ''}" data-id="${escapeHtml(app.id)}">
-      <div class="card-top">
-        <span class="avatar avatar--${hashIndex(app.id, 5)}" aria-hidden="true">${escapeHtml(initialsOf(app.name))}</span>
-        <div class="card-heading">
-          <div class="title-line">
-            <h2>${escapeHtml(app.name)}</h2>
-            <span class="badge badge--${status.cls}"><span class="badge-dot"></span>${status.label}</span>
-          </div>
-          <p class="card-desc">${escapeHtml(app.description || 'Tanpa deskripsi')}</p>
-        </div>
-      </div>
-
-      <dl class="facts">
-        <div class="fact">
-          <dt>Port</dt>
-          <dd>${escapeHtml(app.port)}</dd>
-        </div>
-        <div class="fact">
-          <dt>Terakhir deploy</dt>
-          <dd>${escapeHtml(formatDate(app.deployedAt))}</dd>
-        </div>
-        <div class="fact fact--wide">
-          <dt>URL aplikasi</dt>
-          <dd><a class="fact-link" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${escapeHtml(displayUrl(app.url))}</a></dd>
-        </div>
-      </dl>
-
-      <div class="repo-row">
-        <span class="repo-icon" aria-hidden="true">${icon('github')}</span>
-        <a class="repo-link" href="${escapeHtml(app.repo)}" target="_blank" rel="noopener" title="${escapeHtml(app.repo)}">${escapeHtml(shortRepo(app.repo))}</a>
-        <span class="branch-tag">${escapeHtml(app.branch)}</span>
-        <button class="btn btn-tiny btn-ghost repo-check-btn" type="button" data-action="check" data-id="${escapeHtml(app.id)}" ${checking ? 'disabled' : ''}>
-          ${checking ? icon('loader', 'icon spin') : icon('check')}<span>Cek repo</span>
-        </button>
-      </div>
-
-      ${repoCheckHtml(check)}
-
-      <div class="card-actions">
-        ${actionsHtml(app, busyLabel)}
-      </div>
-    </article>
-  `;
-}
-
-function repoCheckHtml(check) {
-  if (!check) return '';
-  if (check.phase === 'loading') {
-    return `<p class="repo-check repo-check--pending">${icon('loader', 'icon spin')}<span>Menghubungi GitHub…</span></p>`;
-  }
-  const ok = check.phase === 'ok';
-  return `<p class="repo-check repo-check--${ok ? 'ok' : 'error'}">${icon(ok ? 'check' : 'alert')}<span>${escapeHtml(check.message)}</span></p>`;
-}
-
-function actionsHtml(app, busyLabel) {
-  if (busyLabel) {
-    return `<span class="working">${icon('loader', 'icon spin')}<span>${escapeHtml(busyLabel)}…</span></span>`;
-  }
-
-  const parts = [];
-  if (app.status === 'running') {
-    parts.push(
-      `<a class="btn btn-primary" href="${escapeHtml(app.url)}" target="_blank" rel="noopener">${icon('external')}<span>Open</span></a>`
-    );
-  }
-
-  for (const action of ACTIONS_BY_STATUS[app.status] || []) {
-    const meta = ACTIONS[action];
-    parts.push(
-      `<button class="btn ${meta.cls}" type="button" data-action="${action}" data-id="${escapeHtml(app.id)}">${icon(meta.icon)}<span>${meta.label}</span></button>`
-    );
-  }
-
-  return parts.join('');
+  updateChrome();
+  renderOverview();
+  renderDeployments();
+  renderDomains();
+  renderEnvironment();
 }
 
 // ---------------------------------------------------------------------------
@@ -391,23 +1395,40 @@ async function load({ silent = false } = {}) {
   if (!silent) {
     els.refresh.disabled = true;
     els.refresh.classList.add('is-loading');
-    if (state.apps.length === 0) renderSkeleton();
   }
 
-  try {
-    const data = await api('/api/apps');
+  const [appsResult, healthResult] = await Promise.allSettled([
+    api('/api/apps'),
+    api('/api/health'),
+  ]);
+
+  if (appsResult.status === 'fulfilled') {
+    const data = appsResult.value;
     state.apps = Array.isArray(data?.apps) ? data.apps : [];
     state.portainerError = data?.portainerError || null;
-  } catch (err) {
-    state.portainerError = err.message;
-    if (state.apps.length === 0) state.apps = [];
-  } finally {
-    state.loading = false;
-    if (!silent) {
-      els.refresh.disabled = false;
-      els.refresh.classList.remove('is-loading');
-    }
-    render();
+    state.host = data?.host || state.host;
+  } else {
+    state.portainerError = appsResult.reason?.message || 'Gagal memuat data panel.';
+  }
+
+  if (healthResult.status === 'fulfilled') {
+    state.health = healthResult.value;
+  }
+
+  state.loading = false;
+
+  if (!silent) {
+    els.refresh.disabled = false;
+    els.refresh.classList.remove('is-loading');
+  }
+
+  render();
+
+  // Saat halaman dibuka langsung di #deployments, data baru tersedia setelah
+  // load pertama. Muat log aplikasi terpilih secara otomatis.
+  if (state.view === 'deployments') {
+    const app = getSelectedApp();
+    if (app) maybeAutoLoadLogs(app);
   }
 }
 
@@ -415,13 +1436,87 @@ async function load({ silent = false } = {}) {
 // Aksi
 // ---------------------------------------------------------------------------
 
+async function loadLogs(id, { force = false } = {}) {
+  if (!id) return;
+  const existing = state.logs.get(id);
+  if (existing?.phase === 'loading') return;
+  if (!force && existing) return;
+
+  state.logs.set(id, { phase: 'loading', containers: existing?.containers || [] });
+  renderConsoleOnly();
+
+  try {
+    const data = await api(`/api/apps/${encodeURIComponent(id)}/logs`);
+    state.logs.set(id, {
+      phase: 'ready',
+      text: data?.logs || '(log kosong)',
+      containers: Array.isArray(data?.containers) ? data.containers : [],
+      fetchedAt: Date.now(),
+    });
+  } catch (err) {
+    state.logs.set(id, { phase: 'error', message: err.message });
+  }
+
+  renderConsoleOnly();
+}
+
+function renderConsoleOnly() {
+  const app = getSelectedApp();
+  if (!app) return;
+  els.deployConsole.innerHTML = consoleHtml(app);
+  scrollConsole();
+}
+
+function maybeAutoLoadLogs(app) {
+  if (!app || app.status === 'not_deployed') return;
+  if (state.logs.has(app.id)) return;
+  loadLogs(app.id);
+}
+
+function selectApp(id, { loadLogs: shouldLoadLogs = true } = {}) {
+  const app = state.apps.find((entry) => entry.id === id);
+  if (!app) return;
+
+  state.selectedId = id;
+  if (state.view !== 'deployments') {
+    state.view = 'deployments';
+    if (location.hash !== '#deployments') history.replaceState(null, '', '#deployments');
+  }
+
+  closeSidebar();
+  renderViewState();
+  render();
+
+  if (shouldLoadLogs) maybeAutoLoadLogs(app);
+}
+
 async function runAction(id, action) {
+  if (!id) return;
+
   if (action === 'check') {
     await checkRepo(id);
     return;
   }
+
   if (action === 'logs') {
-    await openLogs(id);
+    selectApp(id, { loadLogs: false });
+    await loadLogs(id, { force: true });
+    return;
+  }
+
+  if (action === 'logs-refresh') {
+    await loadLogs(id, { force: true });
+    return;
+  }
+
+  if (action === 'logs-copy') {
+    const entry = state.logs.get(id);
+    if (!entry || entry.phase !== 'ready') {
+      toast('info', 'Log belum siap', 'Muat log terlebih dahulu.');
+      return;
+    }
+    const ok = await copyText(entry.text);
+    toast(ok ? 'success' : 'error', ok ? 'Log disalin' : 'Gagal menyalin', ok ? 'Isi log sudah ada di clipboard.' : 'Browser menolak akses clipboard.');
     return;
   }
 
@@ -440,6 +1535,11 @@ async function runAction(id, action) {
 
   const label = ACTIONS[action]?.label || action;
   state.busy.set(id, label);
+  // Log lama tidak relevan setelah container diubah; biarkan load berikutnya
+  // mengambil log baru saat halaman deployments aktif.
+  if (['deploy', 'update', 'start', 'stop', 'rebuild'].includes(action)) {
+    state.logs.delete(id);
+  }
   render();
 
   try {
@@ -450,6 +1550,12 @@ async function runAction(id, action) {
         : `/api/apps/${encodeURIComponent(id)}/${action}`;
     const result = await api(path, { method });
     toast('success', `${label} berhasil`, result?.message || 'Aksi selesai.');
+
+    if (action === 'delete') {
+      state.logs.delete(id);
+      state.repos.delete(id);
+      if (state.selectedId === id) state.selectedId = null;
+    }
   } catch (err) {
     toast('error', `${label} gagal`, err.message);
   } finally {
@@ -522,57 +1628,6 @@ els.confirmDialog.addEventListener('cancel', () => {
   settleConfirm(false);
 });
 
-// ---------------------------------------------------------------------------
-// Dialog logs
-// ---------------------------------------------------------------------------
-
-async function openLogs(id) {
-  logsAppId = id;
-  const app = state.apps.find((entry) => entry.id === id);
-  els.logsTitle.textContent = `Logs — ${app?.name || id}`;
-  els.logsSub.textContent = 'Memuat…';
-  if (!els.logsDialog.open) els.logsDialog.showModal();
-  await fetchLogs(id);
-}
-
-async function fetchLogs(id) {
-  if (!id) return;
-  els.logsRefresh.disabled = true;
-  els.logsBody.textContent = 'Memuat log container…';
-
-  try {
-    const data = await api(`/api/apps/${encodeURIComponent(id)}/logs`);
-    const names = (data?.containers || []).map((container) => container.name).filter(Boolean);
-    els.logsSub.textContent = names.length ? names.join(', ') : 'Tidak ada container';
-    els.logsBody.textContent = data?.logs || '(log kosong)';
-    els.logsBody.scrollTop = els.logsBody.scrollHeight;
-  } catch (err) {
-    els.logsSub.textContent = 'Gagal memuat';
-    els.logsBody.textContent = `Gagal mengambil log: ${err.message}`;
-  } finally {
-    els.logsRefresh.disabled = false;
-  }
-}
-
-els.logsRefresh.addEventListener('click', () => fetchLogs(logsAppId));
-
-els.logsCopy.addEventListener('click', async () => {
-  const text = els.logsBody.textContent || '';
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('success', 'Log disalin', 'Isi log sudah ada di clipboard.');
-  } catch {
-    toast('error', 'Gagal menyalin', 'Browser menolak akses clipboard.');
-  }
-});
-
-els.logsClose.addEventListener('click', () => els.logsDialog.close());
-
-// Klik backdrop menutup dialog.
-els.logsDialog.addEventListener('click', (event) => {
-  if (event.target === els.logsDialog) els.logsDialog.close();
-});
-
 els.confirmDialog.addEventListener('click', (event) => {
   if (event.target === els.confirmDialog) {
     els.confirmDialog.close();
@@ -584,26 +1639,162 @@ els.confirmDialog.addEventListener('click', (event) => {
 // Event global
 // ---------------------------------------------------------------------------
 
-els.apps.addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
-  const { action, id } = button.dataset;
-  if (!action || !id) return;
-  await runAction(id, action);
-});
+function handleSearch(value, source = 'global') {
+  state.query = String(value || '').trim().toLowerCase();
+  if (source !== 'global' && els.globalSearch.value !== value) {
+    els.globalSearch.value = value;
+  }
+  if (source !== 'domain' && els.domainSearch && els.domainSearch.value !== value) {
+    els.domainSearch.value = value;
+  }
+  renderOverview();
+  renderDeployments();
+  renderDomains();
+  renderEnvironment();
+}
+
+els.globalSearch.addEventListener('input', (event) => handleSearch(event.target.value, 'global'));
+if (els.domainSearch) {
+  els.domainSearch.addEventListener('input', (event) => handleSearch(event.target.value, 'domain'));
+}
 
 els.refresh.addEventListener('click', () => load());
-
 els.retry.addEventListener('click', () => load());
 
+els.menuToggle.addEventListener('click', () => {
+  if (document.body.classList.contains('sidebar-open')) closeSidebar();
+  else openSidebar();
+});
+
+els.sidebarScrim.addEventListener('click', closeSidebar);
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 960) closeSidebar();
+});
+
+document.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    els.globalSearch.focus();
+    els.globalSearch.select();
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    closeSidebar();
+  }
+
+  if ((event.key === 'Enter' || event.key === ' ') && event.target.closest('[data-select-app][role="button"]')) {
+    event.preventDefault();
+    const item = event.target.closest('[data-select-app]');
+    if (item) selectApp(item.dataset.selectApp);
+  }
+});
+
+document.addEventListener('click', async (event) => {
+  const viewButton = event.target.closest('[data-view]');
+  if (viewButton && VIEW_TITLES[viewButton.dataset.view]) {
+    event.preventDefault();
+    setView(viewButton.dataset.view);
+    return;
+  }
+
+  const filterButton = event.target.closest('[data-filter-status]');
+  if (filterButton) {
+    state.statusFilter = filterButton.dataset.filterStatus;
+    renderDeployments();
+    return;
+  }
+
+  const envFilterButton = event.target.closest('[data-env-status]');
+  if (envFilterButton) {
+    state.envFilter = envFilterButton.dataset.envStatus;
+    renderEnvironment();
+    return;
+  }
+
+  const copyButton = event.target.closest('[data-copy]');
+  if (copyButton) {
+    const value = copyButton.dataset.copy;
+    const ok = await copyText(value);
+    toast(ok ? 'success' : 'error', ok ? 'Disalin' : 'Gagal menyalin', ok ? `${value}` : 'Browser menolak akses clipboard.');
+    return;
+  }
+
+  const actionButton = event.target.closest('[data-action]');
+  if (actionButton) {
+    const action = actionButton.dataset.action;
+    const id = actionButton.dataset.id;
+    if (action === 'refresh') {
+      load();
+      return;
+    }
+    if (action === 'logs-refresh' && !id) {
+      const selected = getSelectedApp();
+      if (selected) await loadLogs(selected.id, { force: true });
+      return;
+    }
+    await runAction(id, action);
+    return;
+  }
+
+  const selectButton = event.target.closest('[data-select-app]');
+  if (selectButton) {
+    selectApp(selectButton.dataset.selectApp);
+  }
+});
+
+document.addEventListener('change', (event) => {
+  if (event.target && event.target.id === 'autoscroll') {
+    state.autoScroll = event.target.checked;
+    if (state.autoScroll) scrollConsole();
+  }
+});
+
+els.copyEnv.addEventListener('click', async () => {
+  if (state.apps.length === 0) {
+    toast('info', 'Belum ada variabel', 'Tambahkan aplikasi ke katalog terlebih dahulu.');
+    return;
+  }
+  const lines = ['# APP_PORT per aplikasi (dikirim otomatis oleh panel)', ''];
+  for (const app of state.apps) {
+    lines.push(`# ${app.id} — ${app.name}`);
+    lines.push(`APP_PORT=${app.port}`);
+    lines.push('');
+  }
+  const ok = await copyText(lines.join('\n'));
+  toast(
+    ok ? 'success' : 'error',
+    ok ? 'Template disalin' : 'Gagal menyalin',
+    ok ? 'Daftar APP_PORT sudah ada di clipboard.' : 'Browser menolak akses clipboard.'
+  );
+});
+
+window.addEventListener('hashchange', () => {
+  const view = location.hash.replace(/^#/, '') || 'overview';
+  setView(view, { updateHash: false });
+});
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+
+hydrateStaticIcons();
+setView(location.hash.replace(/^#/, '') || 'overview', { updateHash: false });
 load();
 
-// Auto-refresh ringan: lewati saat ada aksi, dialog terbuka, atau tab tidak aktif.
+// Auto-refresh ringan: lewati saat ada aksi, dialog, input fokus, atau tab tidak aktif.
 setInterval(() => {
-  const dialogOpen = els.logsDialog.open || els.confirmDialog.open;
-  if (state.busy.size === 0 && !dialogOpen && document.visibilityState === 'visible') {
+  const active = document.activeElement;
+  const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  const dialogOpen = els.confirmDialog.open;
+  if (
+    state.busy.size === 0 &&
+    !dialogOpen &&
+    !typing &&
+    document.visibilityState === 'visible' &&
+    !state.loading
+  ) {
     load({ silent: true });
   }
 }, 20_000);
-
-hydrateStaticIcons();
